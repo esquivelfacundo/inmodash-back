@@ -12,7 +12,19 @@ const prisma = new PrismaClient()
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, companyName } = req.body
+    const { 
+      email, 
+      password, 
+      name, 
+      companyName, 
+      companyTaxId, 
+      companyAddress, 
+      companyPhone, 
+      phone, 
+      position 
+    } = req.body
+
+    console.log('🔥 REGISTER - Received data:', req.body)
 
     // Validate input
     if (!email || !password || !name) {
@@ -35,16 +47,24 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await argon2.hash(password)
 
-    // Create user
+    // Create user with all fields
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name,
         companyName: companyName || null,
-        role: 'user'
+        companyTaxId: companyTaxId || null,
+        companyAddress: companyAddress || null,
+        companyPhone: companyPhone || null,
+        phone: phone || null,
+        position: position || null,
+        role: 'user',
+        isEmailVerified: false
       }
     })
+
+    console.log('🔥 REGISTER - User created:', { id: user.id, email: user.email, name: user.name })
 
     // Create tokens
     const accessToken = createToken({

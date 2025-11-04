@@ -2,8 +2,25 @@ import prisma from '../config/database'
 import { recalculateApartmentPercentages } from '../utils/calculations'
 import { CreateApartmentDto, UpdateApartmentDto } from '../types'
 
-export const getAll = async () => {
+export const getAll = async (userId: number) => {
   return await prisma.apartment.findMany({
+    where: {
+      OR: [
+        // Apartamentos en edificios del usuario
+        {
+          building: {
+            userId: userId
+          }
+        },
+        // Apartamentos independientes con propietarios del usuario
+        {
+          buildingId: null,
+          owner: {
+            userId: userId
+          }
+        }
+      ]
+    },
     include: {
       building: true,
       owner: true,
@@ -15,9 +32,26 @@ export const getAll = async () => {
   })
 }
 
-export const getById = async (id: number) => {
-  return await prisma.apartment.findUnique({
-    where: { id },
+export const getById = async (id: number, userId: number) => {
+  return await prisma.apartment.findFirst({
+    where: {
+      id,
+      OR: [
+        // Apartamentos en edificios del usuario
+        {
+          building: {
+            userId: userId
+          }
+        },
+        // Apartamentos independientes con propietarios del usuario
+        {
+          buildingId: null,
+          owner: {
+            userId: userId
+          }
+        }
+      ]
+    },
     include: {
       building: true,
       owner: true,
@@ -40,9 +74,14 @@ export const getById = async (id: number) => {
   })
 }
 
-export const getByBuildingId = async (buildingId: number) => {
+export const getByBuildingId = async (buildingId: number, userId: number) => {
   return await prisma.apartment.findMany({
-    where: { buildingId },
+    where: {
+      buildingId,
+      building: {
+        userId: userId
+      }
+    },
     include: {
       rentalHistory: true
     },
@@ -53,7 +92,7 @@ export const getByBuildingId = async (buildingId: number) => {
   })
 }
 
-export const create = async (data: CreateApartmentDto) => {
+export const create = async (data: CreateApartmentDto, userId: number) => {
   console.log('Creating apartment with data:', JSON.stringify(data, null, 2))
   console.log('Specifications:', data.specifications)
   
@@ -88,10 +127,16 @@ export const create = async (data: CreateApartmentDto) => {
     await recalculateApartmentPercentages(prisma, apartment.buildingId)
   }
 
-  return await getById(apartment.id)
+  return await getById(apartment.id, userId)
 }
 
-export const update = async (id: number, data: UpdateApartmentDto) => {
+export const update = async (id: number, data: UpdateApartmentDto, userId: number) => {
+  // First verify the apartment belongs to the user
+  const existingApartment = await getById(id, userId)
+  if (!existingApartment) {
+    throw new Error('Apartment not found or access denied')
+  }
+
   const apartment = await prisma.apartment.update({
     where: { id },
     data: {
@@ -122,13 +167,12 @@ export const update = async (id: number, data: UpdateApartmentDto) => {
     await recalculateApartmentPercentages(prisma, apartment.buildingId)
   }
 
-  return await getById(apartment.id)
+  return await getById(apartment.id, userId)
 }
 
-export const remove = async (id: number) => {
-  const apartment = await prisma.apartment.findUnique({
-    where: { id }
-  })
+export const remove = async (id: number, userId: number) => {
+  // First verify the apartment belongs to the user
+  const apartment = await getById(id, userId)
 
   if (!apartment) {
     throw new Error('Apartment not found')
