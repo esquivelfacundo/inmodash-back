@@ -12,7 +12,7 @@ export interface TokenPayload {
  */
 export function createToken(payload: TokenPayload): string {
   return jwt.sign(payload, config.jwtSecret, {
-    expiresIn: '1h' // 1 hour
+    expiresIn: '8h' // 8 hours
   })
 }
 
@@ -34,6 +34,24 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
     return decoded
   } catch (error) {
     return null
+  }
+}
+
+/**
+ * Check if token needs renewal (less than 2 hours remaining)
+ */
+export function shouldRenewToken(token: string): boolean {
+  try {
+    const decoded = jwt.decode(token) as any
+    if (!decoded || !decoded.exp) return false
+    
+    const now = Math.floor(Date.now() / 1000)
+    const timeUntilExpiry = decoded.exp - now
+    const twoHoursInSeconds = 2 * 60 * 60
+    
+    return timeUntilExpiry < twoHoursInSeconds
+  } catch (error) {
+    return false
   }
 }
 

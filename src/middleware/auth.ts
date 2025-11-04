@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { verifyToken } from '../lib/auth/jwt'
+import { verifyToken, shouldRenewToken, createToken } from '../lib/auth/jwt'
 import { logger } from '../utils/logger'
 
 // Extend Express Request to include user
@@ -53,6 +53,33 @@ export const authenticate = async (
       userId: payload.userId,
       email: payload.email,
       role: payload.role
+    }
+
+    // Check if token needs renewal and renew if necessary
+    if (shouldRenewToken(token)) {
+      try {
+        const newToken = createToken({
+          userId: payload.userId,
+          email: payload.email,
+          role: payload.role
+        })
+        
+        // Set new token in cookie
+        res.cookie('auth-token', newToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 8 * 60 * 60 * 1000 // 8 hours
+        })
+        
+        // Also send in response header for frontend to update
+        res.setHeader('X-New-Token', newToken)
+        
+        logger.info(`Token renewed for user ${payload.email}`)
+      } catch (renewError) {
+        logger.error('Token renewal failed', renewError)
+        // Continue with existing token
+      }
     }
 
     next()

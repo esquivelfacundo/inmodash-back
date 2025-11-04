@@ -90,7 +90,7 @@ router.post('/register', async (req, res) => {
 
     res.cookie('auth-token', accessToken, {
       ...cookieOptions,
-      maxAge: 60 * 60 * 1000 // 1 hour
+      maxAge: 8 * 60 * 60 * 1000 // 8 hours
     })
 
     res.cookie('refresh-token', refreshToken, {
@@ -185,7 +185,7 @@ router.post('/login', async (req, res) => {
 
     res.cookie('auth-token', accessToken, {
       ...cookieOptions,
-      maxAge: 60 * 60 * 1000 // 1 hour
+      maxAge: 8 * 60 * 60 * 1000 // 8 hours
     })
 
     res.cookie('refresh-token', refreshToken, {
@@ -277,9 +277,20 @@ router.get('/me', async (req, res) => {
  */
 router.post('/logout', async (req, res) => {
   try {
-    // Clear cookies
-    res.clearCookie('auth-token')
-    res.clearCookie('refresh-token')
+    // Clear cookies with same options used to set them
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none' as const,
+      path: '/'
+    }
+
+    res.clearCookie('auth-token', cookieOptions)
+    res.clearCookie('refresh-token', cookieOptions)
+
+    // Also clear any potential variations
+    res.clearCookie('auth-token', { path: '/' })
+    res.clearCookie('refresh-token', { path: '/' })
 
     res.json({
       success: true,
@@ -329,7 +340,7 @@ router.post('/refresh', async (req, res) => {
       httpOnly: true,
       secure: true, // Always secure for production
       sameSite: 'none', // Required for cross-domain cookies
-      maxAge: 60 * 60 * 1000 // 1 hour
+      maxAge: 8 * 60 * 60 * 1000 // 8 hours
     })
 
     res.json({ 
