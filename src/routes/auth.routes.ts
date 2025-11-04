@@ -174,6 +174,62 @@ router.post('/login', async (req, res) => {
 })
 
 /**
+ * GET /api/auth/me
+ * Get current user info
+ */
+router.get('/me', async (req, res) => {
+  try {
+    // Get token from cookies
+    const token = req.cookies['auth-token']
+
+    if (!token) {
+      return res.status(401).json({ 
+        error: 'No token provided' 
+      })
+    }
+
+    // Verify token
+    const payload = await verifyToken(token)
+
+    if (!payload) {
+      return res.status(401).json({ 
+        error: 'Invalid or expired token' 
+      })
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        companyName: true,
+        isEmailVerified: true,
+        lastLoginAt: true
+      }
+    })
+
+    if (!user) {
+      return res.status(404).json({ 
+        error: 'User not found' 
+      })
+    }
+
+    res.json({
+      success: true,
+      user
+    })
+  } catch (error) {
+    console.error('Get user error:', error)
+    res.status(500).json({ 
+      error: 'Failed to get user info' 
+    })
+  }
+})
+
+/**
  * POST /api/auth/refresh
  * Refresh access token using refresh token
  */
