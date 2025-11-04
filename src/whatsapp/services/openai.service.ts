@@ -58,7 +58,7 @@ export class OpenAIService {
         return this.getFallbackExtraction(message, currentState);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0]?.message?.content;
 
       if (!content) {
@@ -121,7 +121,7 @@ export class OpenAIService {
         return this.getFallbackResponse(currentState, botName);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.choices[0]?.message?.content || this.getFallbackResponse(currentState, botName);
 
     } catch (error) {

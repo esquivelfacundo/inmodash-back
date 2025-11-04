@@ -25,7 +25,7 @@ export class WhatsAppWebhookController {
       if (mode === 'subscribe') {
         // Find config with this verify token
         const configs = await this.getAllConfigs();
-        const matchingConfig = configs.find(c => c.verifyToken === token);
+        const matchingConfig = configs.find((c: { userId: number; verifyToken: string }) => c.verifyToken === token);
 
         if (matchingConfig) {
           console.log('✅ Webhook verified successfully for user:', matchingConfig.userId);

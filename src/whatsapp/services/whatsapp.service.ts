@@ -41,7 +41,7 @@ export class WhatsAppService {
         return null;
       }
 
-      return await response.json();
+      return (await response.json()) as WhatsAppSendMessageResponse;
     } catch (error) {
       console.error('Error sending WhatsApp message:', error);
       return null;
