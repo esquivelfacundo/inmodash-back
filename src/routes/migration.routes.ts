@@ -6,14 +6,13 @@ const router = Router()
 // Fix foreign key constraint to allow cascade delete
 router.post('/fix-building-cascade', async (req, res) => {
   try {
-    console.log('🔄 Fixing building foreign key constraint...')
+    console.log('🔄 Fixing foreign key constraints...')
     
-    // Drop existing constraint
+    // Fix apartments -> buildings constraint
     await prisma.$executeRaw`
       ALTER TABLE "apartments" DROP CONSTRAINT IF EXISTS "apartments_buildingId_fkey";
     `
     
-    // Add new constraint with CASCADE
     await prisma.$executeRaw`
       ALTER TABLE "apartments" 
       ADD CONSTRAINT "apartments_buildingId_fkey" 
@@ -23,11 +22,25 @@ router.post('/fix-building-cascade', async (req, res) => {
       ON UPDATE CASCADE;
     `
     
-    console.log('✅ Foreign key constraint updated successfully')
+    // Fix contracts -> apartments constraint
+    await prisma.$executeRaw`
+      ALTER TABLE "contracts" DROP CONSTRAINT IF EXISTS "contracts_apartmentId_fkey";
+    `
+    
+    await prisma.$executeRaw`
+      ALTER TABLE "contracts" 
+      ADD CONSTRAINT "contracts_apartmentId_fkey" 
+      FOREIGN KEY ("apartmentId") 
+      REFERENCES "apartments"("id") 
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE;
+    `
+    
+    console.log('✅ All foreign key constraints updated successfully')
     
     res.json({
       success: true,
-      message: 'Building cascade delete enabled'
+      message: 'Cascade delete enabled for buildings, apartments and contracts'
     })
   } catch (error) {
     console.error('❌ Fix failed:', error)

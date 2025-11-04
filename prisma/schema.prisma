@@ -286,7 +286,7 @@ model Contract {
   
   // Relaciones
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apartment     Apartment           @relation(fields: [apartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  apartment     Apartment           @relation(fields: [apartmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   updateRule    UpdateRule?
   guarantors    ContractGuarantor[] @relation("ContractToGuarantor")
