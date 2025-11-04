@@ -3,6 +3,55 @@ import prisma from '../config/database'
 
 const router = Router()
 
+// Fix apartments without userId by assigning them to their building's owner
+router.post('/fix-apartment-userids', async (req, res) => {
+  try {
+    console.log('🔄 Starting apartment userId fix...')
+    
+    // Get all apartments without userId that belong to a building
+    const apartmentsWithoutUserId = await prisma.apartment.findMany({
+      where: {
+        userId: null,
+        buildingId: { not: null }
+      },
+      include: {
+        building: true
+      }
+    })
+    
+    console.log(`Found ${apartmentsWithoutUserId.length} apartments without userId`)
+    
+    // Update each apartment with its building's userId
+    let updated = 0
+    for (const apartment of apartmentsWithoutUserId) {
+      if (apartment.building && apartment.building.userId) {
+        await prisma.apartment.update({
+          where: { id: apartment.id },
+          data: { userId: apartment.building.userId }
+        })
+        updated++
+      }
+    }
+    
+    console.log(`✅ Updated ${updated} apartments with userId`)
+    
+    res.json({
+      success: true,
+      message: `Fixed ${updated} apartments`,
+      details: {
+        found: apartmentsWithoutUserId.length,
+        updated: updated
+      }
+    })
+  } catch (error) {
+    console.error('❌ Fix failed:', error)
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
 // TEMPORARY: Migration endpoint to fix column sizes
 router.post('/fix-columns', async (req, res) => {
   try {

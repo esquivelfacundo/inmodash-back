@@ -23,7 +23,7 @@ export function generateApartmentId(
 /**
  * Genera los departamentos automáticamente basado en la configuración de pisos
  */
-export function generateApartments(building: any, floorConfig: any[]) {
+export function generateApartments(building: any, floorConfig: any[], userId?: number) {
   const apartments: any[] = []
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   // Usar timestamp para garantizar unicidad
@@ -43,7 +43,7 @@ export function generateApartments(building: any, floorConfig: any[]) {
         uniqueSequence
       )
 
-      apartments.push({
+      const apartment: any = {
         uniqueId,
         buildingId: building.id,
         floor: config.floor,
@@ -55,7 +55,14 @@ export function generateApartments(building: any, floorConfig: any[]) {
         roomPercentage: 0,
         status: 'disponible',
         saleStatus: 'no_esta_en_venta'
-      })
+      }
+
+      // Add userId if provided
+      if (userId) {
+        apartment.userId = userId
+      }
+
+      apartments.push(apartment)
       sequence++
     }
   })

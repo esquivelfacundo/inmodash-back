@@ -55,47 +55,78 @@ export const getAll = async (userId: number) => {
 }
 
 export const getById = async (id: number, userId: number) => {
-  // Temporary: Use old logic until migration is applied
-  console.log('⚠️ Using fallback logic for getById (migration pending)')
-  return await prisma.apartment.findFirst({
-    where: {
-      id,
-      OR: [
-        // Apartamentos en edificios del usuario
-        {
-          building: {
-            userId: userId
+  // Try userId filtering first, fallback to old logic if column doesn't exist
+  try {
+    return await prisma.apartment.findFirst({
+      where: {
+        id,
+        userId: userId
+      },
+      include: {
+        building: true,
+        owner: true,
+        contracts: {
+          include: {
+            tenant: true,
+            updateRule: {
+              include: {
+                updatePeriods: true
+              }
+            }
           }
         },
-        // Apartamentos independientes con propietarios del usuario
-        {
-          buildingId: null,
-          owner: {
-            userId: userId
+        rentalHistory: {
+          orderBy: {
+            startDate: 'desc'
           }
         }
-      ]
-    },
-    include: {
-      building: true,
-      owner: true,
-      contracts: {
+      }
+    })
+  } catch (error: any) {
+    if (error.message?.includes('column') && error.message?.includes('userId')) {
+      console.log('⚠️ userId column not found in getById, using fallback logic')
+      return await prisma.apartment.findFirst({
+        where: {
+          id,
+          OR: [
+            // Apartamentos en edificios del usuario
+            {
+              building: {
+                userId: userId
+              }
+            },
+            // Apartamentos independientes con propietarios del usuario
+            {
+              buildingId: null,
+              owner: {
+                userId: userId
+              }
+            }
+          ]
+        },
         include: {
-          tenant: true,
-          updateRule: {
+          building: true,
+          owner: true,
+          contracts: {
             include: {
-              updatePeriods: true
+              tenant: true,
+              updateRule: {
+                include: {
+                  updatePeriods: true
+                }
+              }
+            }
+          },
+          rentalHistory: {
+            orderBy: {
+              startDate: 'desc'
             }
           }
         }
-      },
-      rentalHistory: {
-        orderBy: {
-          startDate: 'desc'
-        }
-      }
+      })
     }
-  })
+    throw error
+  }
 }
 
 export const getByBuildingId = async (buildingId: number, userId: number) => {

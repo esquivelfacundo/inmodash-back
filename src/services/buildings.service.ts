@@ -51,8 +51,8 @@ export const create = async (data: CreateBuildingDto, userId: number) => {
     }
   })
   
-  // Generar departamentos automáticamente
-  const apartments = generateApartments(building, building.floorConfig)
+  // Generar departamentos automáticamente con userId
+  const apartments = generateApartments(building, building.floorConfig, userId)
   
   await prisma.apartment.createMany({
     data: apartments
