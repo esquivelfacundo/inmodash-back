@@ -12,6 +12,9 @@ const router = Router();
 // CONFIGURATION ROUTES
 // ============================================
 
+// Check if tables exist (diagnostic)
+router.get('/config/check', whatsappConfigController.checkTables.bind(whatsappConfigController));
+
 // Save/Update WhatsApp configuration
 router.post('/config', whatsappConfigController.saveConfig.bind(whatsappConfigController));
 

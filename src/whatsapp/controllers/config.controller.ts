@@ -9,6 +9,31 @@ import { WhatsAppConfigDTO } from '../types';
 
 export class WhatsAppConfigController {
   /**
+   * GET /api/whatsapp/config/check
+   * Check if tables exist (diagnostic)
+   */
+  async checkTables(req: Request, res: Response) {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      
+      // Try to query the table
+      const count = await prisma.$queryRaw`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'whatsapp_configs'`;
+      
+      return res.status(200).json({
+        success: true,
+        tableExists: count[0].count > 0,
+        message: count[0].count > 0 ? 'Table exists' : 'Table does not exist'
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * POST /api/whatsapp/config
    * Save or update WhatsApp configuration
    */
