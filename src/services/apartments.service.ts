@@ -125,7 +125,7 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
       saleStatus: data.saleStatus || 'no_esta_en_venta',
       // Especificaciones
       specifications: data.specifications || null
-    }
+    } as any
   })
 
   // Recalcular porcentajes del edificio solo si pertenece a uno
