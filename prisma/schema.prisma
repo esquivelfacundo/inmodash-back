@@ -183,9 +183,9 @@ model Apartment {
   nomenclature    String    @db.VarChar(10)
   
   // Campos para departamentos independientes (cuando no hay edificio)
-  fullAddress     String?   @db.VarChar(500)
-  city            String?   @db.VarChar(100)
-  province        String?   @db.VarChar(100)
+  fullAddress     String?   @db.Text
+  city            String?   @db.VarChar(200)
+  province        String?   @db.VarChar(200)
   
   // Propietario (OPCIONAL)
   ownerId         Int?
