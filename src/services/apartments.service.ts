@@ -8,7 +8,7 @@ export const getAll = async (userId: number) => {
     return await prisma.apartment.findMany({
       where: {
         userId: userId
-      },
+      } as any,
       include: {
         building: true,
         owner: true,
@@ -60,7 +60,7 @@ export const getById = async (id: number, userId: number) => {
       where: {
         id,
         userId: userId
-      },
+      } as any,
       include: {
         building: true,
         owner: true,
@@ -177,7 +177,7 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
         saleStatus: data.saleStatus || 'no_esta_en_venta',
         // Especificaciones
         specifications: data.specifications
-      }
+      } as any
     })
   } catch (error: any) {
     // If userId column doesn't exist, create without it (temporary)
@@ -187,16 +187,16 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
         data: {
           uniqueId: data.uniqueId,
           // Campos de edificio (opcionales)
-          buildingId: data.buildingId,
-          floor: data.floor,
-          apartmentLetter: data.apartmentLetter,
+          buildingId: data.buildingId || null,
+          floor: data.floor || null,
+          apartmentLetter: data.apartmentLetter || null,
           nomenclature: data.nomenclature,
           // Campos independientes (opcionales)
-          fullAddress: data.fullAddress,
-          city: data.city,
-          province: data.province,
+          fullAddress: data.fullAddress || null,
+          city: data.city || null,
+          province: data.province || null,
           // Propietario
-          ownerId: data.ownerId,
+          ownerId: data.ownerId || null,
           // Tipo de propiedad
           propertyType: data.propertyType || 'departamento',
           // Información general
@@ -205,9 +205,9 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
           status: data.status || 'disponible',
           saleStatus: data.saleStatus || 'no_esta_en_venta',
           // Especificaciones
-          specifications: data.specifications
+          specifications: data.specifications || null
         }
-      })
+      } as any)
     } else {
       throw error
     }
