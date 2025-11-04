@@ -5,21 +5,7 @@ import { CreateApartmentDto, UpdateApartmentDto } from '../types'
 export const getAll = async (userId: number) => {
   return await prisma.apartment.findMany({
     where: {
-      OR: [
-        // Apartamentos en edificios del usuario
-        {
-          building: {
-            userId: userId
-          }
-        },
-        // Apartamentos independientes con propietarios del usuario
-        {
-          buildingId: null,
-          owner: {
-            userId: userId
-          }
-        }
-      ]
+      userId: userId
     },
     include: {
       building: true,
@@ -36,21 +22,7 @@ export const getById = async (id: number, userId: number) => {
   return await prisma.apartment.findFirst({
     where: {
       id,
-      OR: [
-        // Apartamentos en edificios del usuario
-        {
-          building: {
-            userId: userId
-          }
-        },
-        // Apartamentos independientes con propietarios del usuario
-        {
-          buildingId: null,
-          owner: {
-            userId: userId
-          }
-        }
-      ]
+      userId: userId
     },
     include: {
       building: true,
@@ -98,6 +70,7 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
   
   const apartment = await prisma.apartment.create({
     data: {
+      userId: userId,
       uniqueId: data.uniqueId,
       // Campos de edificio (opcionales)
       buildingId: data.buildingId,

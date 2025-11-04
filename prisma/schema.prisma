@@ -60,6 +60,7 @@ model User {
   
   // Relaciones con el sistema inmobiliario (Multi-tenancy)
   buildings  Building[]
+  apartments Apartment[]
   tenants    Tenant[]
   owners     Owner[]
   contracts  Contract[]
@@ -176,6 +177,9 @@ model Apartment {
   id              Int       @id @default(autoincrement())
   uniqueId        String    @unique @db.VarChar(100)
   
+  // Usuario propietario del apartamento (REQUERIDO para multi-tenancy)
+  userId          Int
+  
   // Relación con edificio (OPCIONAL para departamentos independientes)
   buildingId      Int?
   floor           Int?
@@ -208,12 +212,14 @@ model Apartment {
   updatedAt       DateTime  @updatedAt
   
   // Relaciones
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   building      Building?       @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   owner         Owner?          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contracts     Contract[]
   rentalHistory RentalHistory[]
   documents     Document[]
   
+  @@index([userId])
   @@index([buildingId])
   @@index([ownerId])
   @@index([status])
