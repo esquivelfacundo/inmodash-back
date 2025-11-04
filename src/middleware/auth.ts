@@ -68,7 +68,8 @@ export const authenticate = async (
         res.cookie('auth-token', newToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          path: '/',
           maxAge: 8 * 60 * 60 * 1000 // 8 hours
         })
         

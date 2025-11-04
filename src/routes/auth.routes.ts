@@ -83,8 +83,8 @@ router.post('/register', async (req, res) => {
     // Enhanced cookie configuration for mobile compatibility
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       path: '/'
     };
 
@@ -178,8 +178,8 @@ router.post('/login', async (req, res) => {
     // Enhanced cookie configuration for mobile compatibility
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       path: '/'
     };
 
@@ -280,8 +280,8 @@ router.post('/logout', async (req, res) => {
     // Clear cookies with same options used to set them
     const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       path: '/'
     }
 
