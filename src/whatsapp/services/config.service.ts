@@ -203,21 +203,32 @@ export class WhatsAppConfigService {
       }
 
       // Test connection to Meta API
+      const fullConfig = await prisma.whatsAppConfig.findUnique({
+        where: { userId }
+      });
+
+      if (!fullConfig) {
+        return {
+          success: false,
+          error: 'No se encontró la configuración'
+        };
+      }
+
       const response = await fetch(
-        `https://graph.facebook.com/v18.0/${config.phoneNumberId}`,
+        `https://graph.facebook.com/v18.0/${fullConfig.phoneNumberId}`,
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${config.accessToken}`
+            'Authorization': `Bearer ${fullConfig.accessToken}`
           }
         }
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        const errorData = await response.json() as any;
         return {
           success: false,
-          error: error.error?.message || 'Error al conectar con WhatsApp API'
+          error: errorData.error?.message || 'Error al conectar con WhatsApp API'
         };
       }
 
