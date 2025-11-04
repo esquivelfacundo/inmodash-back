@@ -3,129 +3,79 @@ import { recalculateApartmentPercentages } from '../utils/calculations'
 import { CreateApartmentDto, UpdateApartmentDto } from '../types'
 
 export const getAll = async (userId: number) => {
-  // Temporary fallback while migration is pending
-  try {
-    return await prisma.apartment.findMany({
-      where: {
-        userId: userId
-      } as any,
-      include: {
-        building: true,
-        owner: true,
-        rentalHistory: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-  } catch (error: any) {
-    // If userId column doesn't exist, fall back to old logic
-    if (error.message?.includes('column "userId" does not exist')) {
-      return await prisma.apartment.findMany({
-        where: {
-          OR: [
-            // Apartamentos en edificios del usuario
-            {
-              building: {
-                userId: userId
-              }
-            },
-            // Apartamentos independientes con propietarios del usuario
-            {
-              buildingId: null,
-              owner: {
-                userId: userId
-              }
-            }
-          ]
+  // Temporary: Use old logic until migration is applied
+  console.log('⚠️ Using fallback logic for getAll (migration pending)')
+  return await prisma.apartment.findMany({
+    where: {
+      OR: [
+        // Apartamentos en edificios del usuario
+        {
+          building: {
+            userId: userId
+          }
         },
-        include: {
-          building: true,
-          owner: true,
-          rentalHistory: true
-        },
-        orderBy: {
-          createdAt: 'desc'
+        // Apartamentos independientes con propietarios del usuario
+        {
+          buildingId: null,
+          owner: {
+            userId: userId
+          }
         }
-      })
+      ]
+    },
+    include: {
+      building: true,
+      owner: true,
+      rentalHistory: true
+    },
+    orderBy: {
+      createdAt: 'desc'
     }
-    throw error
-  }
+  })
 }
 
 export const getById = async (id: number, userId: number) => {
-  // Temporary fallback while migration is pending
-  try {
-    return await prisma.apartment.findFirst({
-      where: {
-        id,
-        userId: userId
-      } as any,
-      include: {
-        building: true,
-        owner: true,
-        contracts: {
-          include: {
-            tenant: true,
-            updateRule: {
-              include: {
-                updatePeriods: true
-              }
-            }
+  // Temporary: Use old logic until migration is applied
+  console.log('⚠️ Using fallback logic for getById (migration pending)')
+  return await prisma.apartment.findFirst({
+    where: {
+      id,
+      OR: [
+        // Apartamentos en edificios del usuario
+        {
+          building: {
+            userId: userId
           }
         },
-        rentalHistory: {
-          orderBy: {
-            startDate: 'desc'
+        // Apartamentos independientes con propietarios del usuario
+        {
+          buildingId: null,
+          owner: {
+            userId: userId
           }
+        }
+      ]
+    },
+    include: {
+      building: true,
+      owner: true,
+      contracts: {
+        include: {
+          tenant: true,
+          updateRule: {
+            include: {
+              updatePeriods: true
+            }
+          }
+        }
+      },
+      rentalHistory: {
+        orderBy: {
+          startDate: 'desc'
         }
       }
-    })
-  } catch (error: any) {
-    // If userId column doesn't exist, fall back to old logic
-    if (error.message?.includes('column "userId" does not exist')) {
-      return await prisma.apartment.findFirst({
-        where: {
-          id,
-          OR: [
-            // Apartamentos en edificios del usuario
-            {
-              building: {
-                userId: userId
-              }
-            },
-            // Apartamentos independientes con propietarios del usuario
-            {
-              buildingId: null,
-              owner: {
-                userId: userId
-              }
-            }
-          ]
-        },
-        include: {
-          building: true,
-          owner: true,
-          contracts: {
-            include: {
-              tenant: true,
-              updateRule: {
-                include: {
-                  updatePeriods: true
-                }
-              }
-            }
-          },
-          rentalHistory: {
-            orderBy: {
-              startDate: 'desc'
-            }
-          }
-        }
-      })
     }
-    throw error
-  }
+  })
 }
 
 export const getByBuildingId = async (buildingId: number, userId: number) => {
@@ -150,68 +100,33 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
   console.log('Creating apartment with data:', JSON.stringify(data, null, 2))
   console.log('Specifications:', data.specifications)
   
-  // Temporary fallback while migration is pending
-  let apartment
-  try {
-    apartment = await prisma.apartment.create({
-      data: {
-        userId: userId,
-        uniqueId: data.uniqueId,
-        // Campos de edificio (opcionales)
-        buildingId: data.buildingId,
-        floor: data.floor,
-        apartmentLetter: data.apartmentLetter,
-        nomenclature: data.nomenclature,
-        // Campos independientes (opcionales)
-        fullAddress: data.fullAddress,
-        city: data.city,
-        province: data.province,
-        // Propietario
-        ownerId: data.ownerId,
-        // Tipo de propiedad
-        propertyType: data.propertyType || 'departamento',
-        // Información general
-        area: data.area || 0,
-        rooms: data.rooms || 0,
-        status: data.status || 'disponible',
-        saleStatus: data.saleStatus || 'no_esta_en_venta',
-        // Especificaciones
-        specifications: data.specifications
-      } as any
-    })
-  } catch (error: any) {
-    // If userId column doesn't exist, create without it (temporary)
-    if (error.message?.includes('column "userId" does not exist')) {
-      console.log('⚠️ Creating apartment without userId (migration pending)')
-      apartment = await prisma.apartment.create({
-        data: {
-          uniqueId: data.uniqueId,
-          // Campos de edificio (opcionales)
-          buildingId: data.buildingId || null,
-          floor: data.floor || null,
-          apartmentLetter: data.apartmentLetter || null,
-          nomenclature: data.nomenclature,
-          // Campos independientes (opcionales)
-          fullAddress: data.fullAddress || null,
-          city: data.city || null,
-          province: data.province || null,
-          // Propietario
-          ownerId: data.ownerId || null,
-          // Tipo de propiedad
-          propertyType: data.propertyType || 'departamento',
-          // Información general
-          area: data.area || 0,
-          rooms: data.rooms || 0,
-          status: data.status || 'disponible',
-          saleStatus: data.saleStatus || 'no_esta_en_venta',
-          // Especificaciones
-          specifications: data.specifications || null
-        }
-      } as any)
-    } else {
-      throw error
+  // Temporary: Create without userId until migration is applied
+  console.log('⚠️ Creating apartment without userId (migration pending)')
+  const apartment = await prisma.apartment.create({
+    data: {
+      uniqueId: data.uniqueId,
+      // Campos de edificio (opcionales)
+      buildingId: data.buildingId || null,
+      floor: data.floor || null,
+      apartmentLetter: data.apartmentLetter || null,
+      nomenclature: data.nomenclature,
+      // Campos independientes (opcionales)
+      fullAddress: data.fullAddress || null,
+      city: data.city || null,
+      province: data.province || null,
+      // Propietario
+      ownerId: data.ownerId || null,
+      // Tipo de propiedad
+      propertyType: data.propertyType || 'departamento',
+      // Información general
+      area: data.area || 0,
+      rooms: data.rooms || 0,
+      status: data.status || 'disponible',
+      saleStatus: data.saleStatus || 'no_esta_en_venta',
+      // Especificaciones
+      specifications: data.specifications || null
     }
-  }
+  })
 
   // Recalcular porcentajes del edificio solo si pertenece a uno
   if (apartment.buildingId) {
