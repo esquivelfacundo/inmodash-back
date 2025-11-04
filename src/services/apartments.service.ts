@@ -133,7 +133,29 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
     await recalculateApartmentPercentages(prisma, apartment.buildingId)
   }
 
-  return await getById(apartment.id, userId)
+  // Return apartment with basic include (no userId filtering)
+  return await prisma.apartment.findUnique({
+    where: { id: apartment.id },
+    include: {
+      building: true,
+      owner: true,
+      contracts: {
+        include: {
+          tenant: true,
+          updateRule: {
+            include: {
+              updatePeriods: true
+            }
+          }
+        }
+      },
+      rentalHistory: {
+        orderBy: {
+          startDate: 'desc'
+        }
+      }
+    }
+  })
 }
 
 export const update = async (id: number, data: UpdateApartmentDto, userId: number) => {
