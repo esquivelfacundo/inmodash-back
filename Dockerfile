@@ -40,6 +40,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 # Change ownership
 RUN chown -R apiuser:nodejs /app
@@ -50,5 +51,5 @@ EXPOSE 3001
 
 ENV PORT=3001
 
-# Run migrations and start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Run migration script and start server
+CMD ["sh", "-c", "node scripts/apply-whatsapp-migration.js && node dist/server.js"]
