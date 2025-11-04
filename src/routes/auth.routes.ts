@@ -99,9 +99,11 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body
+    console.log('🔥 LOGIN ATTEMPT:', { email, passwordLength: password?.length })
 
     // Validate input
     if (!email || !password) {
+      console.log('❌ Missing email or password')
       return res.status(400).json({ 
         error: 'Email and password are required' 
       })
@@ -113,13 +115,17 @@ router.post('/login', async (req, res) => {
     })
 
     if (!user) {
+      console.log('❌ User not found:', email)
       return res.status(401).json({ 
         error: 'Invalid credentials' 
       })
     }
 
+    console.log('✅ User found:', { id: user.id, email: user.email, hasPassword: !!user.passwordHash })
+
     // Verify password
     const isValidPassword = await argon2.verify(user.passwordHash, password)
+    console.log('🔐 Password verification:', isValidPassword)
 
     if (!isValidPassword) {
       return res.status(401).json({ 
