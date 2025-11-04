@@ -96,6 +96,7 @@ import dashboardRoutes from './routes/dashboard.routes'
 import ownersRoutes from './routes/owners.routes'
 import paymentsRoutes from './routes/payments.routes'
 import documentsRoutes from './routes/documents.routes'
+import migrationRoutes from './routes/migration.routes'
 
 // Usar rutas
 app.use('/api/auth', authRoutes)
@@ -108,6 +109,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/owners', ownersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/documents', documentsRoutes)
+app.use('/api/migration', migrationRoutes)
 
 // Error handler (debe ser el último middleware)
 app.use(errorHandler)
