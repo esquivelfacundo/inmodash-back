@@ -3,6 +3,41 @@ import prisma from '../config/database'
 
 const router = Router()
 
+// Fix foreign key constraint to allow cascade delete
+router.post('/fix-building-cascade', async (req, res) => {
+  try {
+    console.log('🔄 Fixing building foreign key constraint...')
+    
+    // Drop existing constraint
+    await prisma.$executeRaw`
+      ALTER TABLE "apartments" DROP CONSTRAINT IF EXISTS "apartments_buildingId_fkey";
+    `
+    
+    // Add new constraint with CASCADE
+    await prisma.$executeRaw`
+      ALTER TABLE "apartments" 
+      ADD CONSTRAINT "apartments_buildingId_fkey" 
+      FOREIGN KEY ("buildingId") 
+      REFERENCES "buildings"("id") 
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE;
+    `
+    
+    console.log('✅ Foreign key constraint updated successfully')
+    
+    res.json({
+      success: true,
+      message: 'Building cascade delete enabled'
+    })
+  } catch (error) {
+    console.error('❌ Fix failed:', error)
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
 // Fix apartments without userId by assigning them to their building's owner
 router.post('/fix-apartment-userids', async (req, res) => {
   try {
