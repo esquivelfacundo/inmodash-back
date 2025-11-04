@@ -62,15 +62,15 @@ router.post('/register', async (req, res) => {
     // Set cookies
     res.cookie('auth-token', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production
+      sameSite: 'none', // Required for cross-domain cookies
       maxAge: 60 * 60 * 1000 // 1 hour
     })
 
     res.cookie('refresh-token', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production
+      sameSite: 'none', // Required for cross-domain cookies
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
 
@@ -149,15 +149,15 @@ router.post('/login', async (req, res) => {
     // Set cookies
     res.cookie('auth-token', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production
+      sameSite: 'none', // Required for cross-domain cookies
       maxAge: 60 * 60 * 1000 // 1 hour
     })
 
     res.cookie('refresh-token', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production
+      sameSite: 'none', // Required for cross-domain cookies
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
 
@@ -291,8 +291,8 @@ router.post('/refresh', async (req, res) => {
     // Set new access token in cookie
     res.cookie('auth-token', newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Always secure for production
+      sameSite: 'none', // Required for cross-domain cookies
       maxAge: 60 * 60 * 1000 // 1 hour
     })
 
