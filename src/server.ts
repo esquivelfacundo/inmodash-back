@@ -59,7 +59,8 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     message: 'API is running',
     timestamp: new Date().toISOString(),
-    environment: config.nodeEnv
+    environment: config.nodeEnv,
+    version: '1.1.0' // WhatsApp Bot Phase 1
   })
 })
 
