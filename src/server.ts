@@ -23,7 +23,8 @@ if (config.isDevelopment) {
 const allowedOrigins = [
   'https://inmodash-front.vercel.app',
   'https://inmodash.com.ar',
-  'https://www.inmodash.com.ar'
+  'https://www.inmodash.com.ar',
+  'http://localhost:3000' // For local development
 ];
 
 app.use(cors({

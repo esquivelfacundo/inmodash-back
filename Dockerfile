@@ -51,5 +51,5 @@ EXPOSE 3001
 
 ENV PORT=3001
 
-# Run migration script and start server
-CMD ["sh", "-c", "node scripts/apply-whatsapp-migration.js && node dist/server.js"]
+# Run migration script (don't fail if it errors) and start server
+CMD ["sh", "-c", "node scripts/apply-whatsapp-migration.js || true && node dist/server.js"]
