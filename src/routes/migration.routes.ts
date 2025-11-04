@@ -36,11 +36,25 @@ router.post('/fix-building-cascade', async (req, res) => {
       ON UPDATE CASCADE;
     `
     
+    // Fix rental_history -> apartments constraint
+    await prisma.$executeRaw`
+      ALTER TABLE "rental_history" DROP CONSTRAINT IF EXISTS "rental_history_apartmentId_fkey";
+    `
+    
+    await prisma.$executeRaw`
+      ALTER TABLE "rental_history" 
+      ADD CONSTRAINT "rental_history_apartmentId_fkey" 
+      FOREIGN KEY ("apartmentId") 
+      REFERENCES "apartments"("id") 
+      ON DELETE CASCADE 
+      ON UPDATE CASCADE;
+    `
+    
     console.log('✅ All foreign key constraints updated successfully')
     
     res.json({
       success: true,
-      message: 'Cascade delete enabled for buildings, apartments and contracts'
+      message: 'Cascade delete enabled for buildings, apartments, contracts and rental history'
     })
   } catch (error) {
     console.error('❌ Fix failed:', error)
