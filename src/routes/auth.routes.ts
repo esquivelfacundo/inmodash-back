@@ -230,6 +230,28 @@ router.get('/me', async (req, res) => {
 })
 
 /**
+ * POST /api/auth/logout
+ * Logout user and clear cookies
+ */
+router.post('/logout', async (req, res) => {
+  try {
+    // Clear cookies
+    res.clearCookie('auth-token')
+    res.clearCookie('refresh-token')
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    })
+  } catch (error) {
+    console.error('Logout error:', error)
+    res.status(500).json({ 
+      error: 'Failed to logout' 
+    })
+  }
+})
+
+/**
  * POST /api/auth/refresh
  * Refresh access token using refresh token
  */
