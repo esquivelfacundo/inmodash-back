@@ -177,8 +177,8 @@ model Apartment {
   id              Int       @id @default(autoincrement())
   uniqueId        String    @unique @db.VarChar(100)
   
-  // Usuario propietario del apartamento (REQUERIDO para multi-tenancy)
-  userId          Int
+  // Usuario propietario del apartamento (TEMPORAL: opcional hasta migración)
+  userId          Int?
   
   // Relación con edificio (OPCIONAL para departamentos independientes)
   buildingId      Int?
@@ -212,7 +212,7 @@ model Apartment {
   updatedAt       DateTime  @updatedAt
   
   // Relaciones
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   building      Building?       @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   owner         Owner?          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contracts     Contract[]
