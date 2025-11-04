@@ -97,6 +97,8 @@ import ownersRoutes from './routes/owners.routes'
 import paymentsRoutes from './routes/payments.routes'
 import documentsRoutes from './routes/documents.routes'
 import migrationRoutes from './routes/migration.routes'
+import whatsappRoutes from './whatsapp/routes/index'
+import { authenticate } from './middleware/auth'
 
 // Usar rutas
 app.use('/api/auth', authRoutes)
@@ -110,6 +112,7 @@ app.use('/api/owners', ownersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/documents', documentsRoutes)
 app.use('/api/migration', migrationRoutes)
+app.use('/api/whatsapp', authenticate, whatsappRoutes)
 
 // Error handler (debe ser el último middleware)
 app.use(errorHandler)
