@@ -174,13 +174,13 @@ model Owner {
 // Modelo: Apartment (Departamento)
 model Apartment {
   id              Int       @id @default(autoincrement())
-  uniqueId        String    @unique @db.VarChar(50)
+  uniqueId        String    @unique @db.VarChar(100)
   
   // Relación con edificio (OPCIONAL para departamentos independientes)
   buildingId      Int?
   floor           Int?
-  apartmentLetter String?   @db.VarChar(5)
-  nomenclature    String    @db.VarChar(10)
+  apartmentLetter String?   @db.VarChar(20)
+  nomenclature    String    @db.VarChar(50)
   
   // Campos para departamentos independientes (cuando no hay edificio)
   fullAddress     String?   @db.Text
