@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -202,7 +202,7 @@ model Apartment {
   saleStatus      String    @default("no_esta_en_venta") @db.VarChar(50)
   
   // Especificaciones adicionales (JSON flexible según tipo de propiedad)
-  specifications  String?   @db.NVarChar(Max)
+  specifications  String?   @db.Text
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
