@@ -1,0 +1,60 @@
+{
+  "name": "proyecto-inmobiliaria-api",
+  "version": "1.0.0",
+  "description": "API Backend para Sistema de Gestión Inmobiliaria con SQL Server",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "type-check": "tsc --noEmit",
+    "validate": "npm run type-check && npm run lint && npm run format:check",
+    "test": "echo \"No tests configured yet\" && exit 0"
+  },
+  "keywords": [
+    "inmobiliaria",
+    "api",
+    "real-estate"
+  ],
+  "author": "Sistema Inmobiliaria",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/proyecto-inmobiliaria-api"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.3",
+    "argon2": "^0.44.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "^6.16.3"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.6.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}

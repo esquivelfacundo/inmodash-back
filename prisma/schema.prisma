@@ -1,0 +1,421 @@
+// Configuración del generador y datasource
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo: User (Usuario del sistema)
+model User {
+  id                    Int       @id @default(autoincrement())
+  email                 String    @unique @db.VarChar(255)
+  passwordHash          String    @db.VarChar(255)
+  name                  String    @db.VarChar(255)
+  role                  String    @default("user") @db.VarChar(50) // user, admin
+  isEmailVerified       Boolean   @default(false)
+  emailVerificationToken String?  @db.VarChar(255)
+  emailVerificationExpires DateTime?
+  passwordResetToken    String?   @db.VarChar(255)
+  passwordResetExpires  DateTime?
+  refreshTokenHash      String?   @db.VarChar(255)
+  failedLoginAttempts   Int       @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Datos del representante
+  phone                 String?   @db.VarChar(50)
+  position              String?   @db.VarChar(100) // Cargo en la inmobiliaria
+  
+  // Datos de la inmobiliaria
+  companyName           String?   @db.VarChar(255)
+  companyTaxId          String?   @db.VarChar(100) // CUIT/RUT/Tax ID
+  companyAddress        String?   @db.VarChar(500)
+  companyCity           String?   @db.VarChar(100)
+  companyState          String?   @db.VarChar(100)
+  companyCountry        String?   @db.VarChar(100)
+  companyZipCode        String?   @db.VarChar(20)
+  companyPhone          String?   @db.VarChar(50)
+  companyWebsite        String?   @db.VarChar(255)
+  
+  // Datos de suscripción
+  subscriptionStatus    String    @default("trial") @db.VarChar(50) // trial, active, suspended, cancelled
+  subscriptionPlan      String    @default("professional") @db.VarChar(50) // professional
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  trialEndsAt           DateTime?
+  
+  // Datos de pago (por ahora opcionales)
+  paymentMethod         String?   @db.VarChar(50) // credit_card, bank_transfer, etc
+  lastPaymentDate       DateTime?
+  nextPaymentDate       DateTime?
+  
+  // Relaciones
+  sessions  Session[]
+  auditLogs AuditLog[]
+  
+  // Relaciones con el sistema inmobiliario (Multi-tenancy)
+  buildings  Building[]
+  tenants    Tenant[]
+  owners     Owner[]
+  contracts  Contract[]
+  payments   Payment[]
+  documents  Document[]
+  
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// Modelo: Session (Sesiones de usuario)
+model Session {
+  id           String   @id @default(cuid())
+  userId       Int
+  sessionToken String   @unique @db.VarChar(255)
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relación con User
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([sessionToken])
+  @@map("sessions")
+}
+
+// Modelo: AuditLog (Log de auditoría)
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String   @db.VarChar(100)
+  resource  String   @db.VarChar(100)
+  resourceId String? @db.VarChar(50)
+  details   String?  @db.Text
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  
+  // Relación con User (opcional, para acciones anónimas)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Modelo: Building (Edificio)
+model Building {
+  id        Int       @id @default(autoincrement())
+  userId    Int       // Usuario propietario del edificio
+  name      String    @db.VarChar(255)
+  address   String    @db.VarChar(500)
+  city      String    @db.VarChar(100)
+  province  String    @db.VarChar(100)
+  owner     String    @db.VarChar(255)
+  floors    Int
+  totalArea Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relaciones
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apartments      Apartment[]
+  floorConfig     FloorConfiguration[]
+  
+  @@index([userId])
+  @@index([name])
+  @@map("buildings")
+}
+
+// Modelo: FloorConfiguration
+model FloorConfiguration {
+  id              Int      @id @default(autoincrement())
+  buildingId      Int
+  floor           Int
+  apartmentsCount Int
+  
+  // Relación
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  
+  @@index([buildingId])
+  @@map("floor_configurations")
+}
+
+// Modelo: Owner (Propietario)
+model Owner {
+  id                   Int         @id @default(autoincrement())
+  userId               Int         // Usuario propietario del registro
+  name                 String      @db.VarChar(255)
+  dniOrCuit            String      @unique @db.VarChar(20)
+  phone                String      @db.VarChar(50)
+  email                String      @db.VarChar(255)
+  address              String      @db.VarChar(500)
+  bankAccount          String?     @db.VarChar(100)
+  commissionPercentage Float       @default(0)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  
+  // Relaciones
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apartments Apartment[]
+  documents  Document[]
+  
+  @@index([userId])
+  @@index([dniOrCuit])
+  @@map("owners")
+}
+
+// Modelo: Apartment (Departamento)
+model Apartment {
+  id              Int       @id @default(autoincrement())
+  uniqueId        String    @unique @db.VarChar(50)
+  
+  // Relación con edificio (OPCIONAL para departamentos independientes)
+  buildingId      Int?
+  floor           Int?
+  apartmentLetter String?   @db.VarChar(5)
+  nomenclature    String    @db.VarChar(10)
+  
+  // Campos para departamentos independientes (cuando no hay edificio)
+  fullAddress     String?   @db.VarChar(500)
+  city            String?   @db.VarChar(100)
+  province        String?   @db.VarChar(100)
+  
+  // Propietario (OPCIONAL)
+  ownerId         Int?
+  
+  // Tipo de propiedad
+  propertyType    String    @default("departamento") @db.VarChar(50)
+  
+  // Información general
+  area            Float     @default(0)
+  rooms           Int       @default(0)
+  areaPercentage  Float     @default(0)
+  roomPercentage  Float     @default(0)
+  status          String    @default("disponible") @db.VarChar(50)
+  saleStatus      String    @default("no_esta_en_venta") @db.VarChar(50)
+  
+  // Especificaciones adicionales (JSON flexible según tipo de propiedad)
+  specifications  String?   @db.NVarChar(Max)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relaciones
+  building      Building?       @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner         Owner?          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contracts     Contract[]
+  rentalHistory RentalHistory[]
+  documents     Document[]
+  
+  @@index([buildingId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("apartments")
+}
+
+// Modelo: Tenant (Cliente/Inquilino)
+model Tenant {
+  id             Int       @id @default(autoincrement())
+  userId         Int       // Usuario propietario del registro
+  nameOrBusiness String    @db.VarChar(255)
+  dniOrCuit      String    @db.VarChar(20)
+  address        String    @db.VarChar(500)
+  contactName    String    @db.VarChar(255)
+  contactPhone   String    @db.VarChar(50)
+  contactEmail   String    @db.VarChar(255)
+  contactAddress String    @db.VarChar(500)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relaciones
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guarantors        Guarantor[]
+  contracts         Contract[]
+  rentalHistory     RentalHistory[]
+  documents         Document[]
+  
+  @@index([userId])
+  @@index([dniOrCuit])
+  @@map("tenants")
+}
+
+// Modelo: Guarantor (Garante)
+model Guarantor {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  name      String   @db.VarChar(255)
+  dni       String   @db.VarChar(20)
+  address   String   @db.VarChar(500)
+  email     String   @db.VarChar(255)
+  phone     String   @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relaciones
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contracts ContractGuarantor[] @relation("GuarantorToContract")
+  
+  @@index([tenantId])
+  @@map("guarantors")
+}
+
+// Modelo: Contract (Contrato)
+model Contract {
+  id            Int       @id @default(autoincrement())
+  userId        Int       // Usuario propietario del contrato
+  apartmentId   Int
+  tenantId      Int
+  startDate     DateTime
+  endDate       DateTime
+  initialAmount Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relaciones
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apartment     Apartment           @relation(fields: [apartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updateRule    UpdateRule?
+  guarantors    ContractGuarantor[] @relation("ContractToGuarantor")
+  rentalHistory RentalHistory?
+  payments      Payment[]
+  documents     Document[]
+  
+  @@index([userId])
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@map("contracts")
+}
+
+// Modelo: UpdateRule (Regla de Actualización)
+model UpdateRule {
+  id                    Int      @id @default(autoincrement())
+  contractId            Int      @unique
+  updateFrequency       String   @db.VarChar(50)
+  monthlyCoefficient    Float?
+  lateInterestPercent   Float?
+  lateInterestFrequency String?  @db.VarChar(50)
+  
+  // Relaciones
+  contract      Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  updatePeriods UpdatePeriod[]
+  
+  @@map("update_rules")
+}
+
+// Modelo: UpdatePeriod (Período de Actualización)
+model UpdatePeriod {
+  id           Int       @id @default(autoincrement())
+  updateRuleId Int
+  date         DateTime
+  type         String    @db.VarChar(50)
+  value        Float?
+  indexName    String?   @db.VarChar(100)
+  
+  // Relación
+  updateRule UpdateRule @relation(fields: [updateRuleId], references: [id], onDelete: Cascade)
+  
+  @@index([updateRuleId])
+  @@map("update_periods")
+}
+
+// Modelo: Payment (Pago de Alquiler)
+model Payment {
+  id               Int       @id @default(autoincrement())
+  userId           Int       // Usuario propietario del pago
+  contractId       Int
+  month            DateTime  // Mes al que corresponde el pago
+  amount           Float     // Monto del alquiler
+  commissionAmount Float     @default(0) // Comisión de la inmobiliaria
+  ownerAmount      Float     @default(0) // Lo que recibe el propietario
+  paymentDate      DateTime? // Fecha en que se realizó el pago
+  status           String    @default("pending") @db.VarChar(20) // pending, paid, overdue
+  notes            String?   @db.VarChar(500)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relaciones
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@index([userId])
+  @@index([contractId])
+  @@index([status])
+  @@index([month])
+  @@map("payments")
+}
+
+// Modelo: Document (Documentos)
+model Document {
+  id          Int       @id @default(autoincrement())
+  userId      Int       // Usuario propietario del documento
+  type        String    @db.VarChar(50) // dni, recibo_sueldo, contrato, garantia, otro
+  fileName    String    @db.VarChar(255)
+  fileUrl     String    @db.VarChar(500)
+  fileSize    Int       // Tamaño en bytes
+  mimeType    String    @db.VarChar(100)
+  description String?   @db.VarChar(500)
+  uploadedAt  DateTime  @default(now())
+  
+  // Relaciones opcionales (un documento puede pertenecer a diferentes entidades)
+  tenantId    Int?
+  ownerId     Int?
+  contractId  Int?
+  apartmentId Int?
+  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?    @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  owner     Owner?     @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contract  Contract?  @relation(fields: [contractId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  apartment Apartment? @relation(fields: [apartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@index([userId])
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([contractId])
+  @@index([apartmentId])
+  @@index([type])
+  @@map("documents")
+}
+
+// Modelo: ContractGuarantor (Relación muchos a muchos)
+model ContractGuarantor {
+  contractId  Int
+  guarantorId Int
+  
+  contract   Contract  @relation("ContractToGuarantor", fields: [contractId], references: [id], onDelete: Cascade)
+  guarantor  Guarantor @relation("GuarantorToContract", fields: [guarantorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@id([contractId, guarantorId])
+  @@map("contract_guarantors")
+}
+
+// Modelo: RentalHistory (Historial de Alquileres)
+model RentalHistory {
+  id            Int      @id @default(autoincrement())
+  apartmentId   Int
+  contractId    Int      @unique
+  tenantId      Int
+  tenantName    String   @db.VarChar(255)
+  startDate     DateTime
+  endDate       DateTime
+  initialAmount Float
+  finalAmount   Float?
+  createdAt     DateTime @default(now())
+  
+  // Relaciones
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contract  Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@map("rental_history")
+}

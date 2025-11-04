@@ -1,0 +1,201 @@
+// Configuración del generador y datasource
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo: Building (Edificio)
+model Building {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(255)
+  address   String    @db.VarChar(500)
+  city      String    @db.VarChar(100)
+  province  String    @db.VarChar(100)
+  owner     String    @db.VarChar(255)
+  floors    Int
+  totalArea Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relaciones
+  apartments      Apartment[]
+  floorConfig     FloorConfiguration[]
+  
+  @@index([name])
+  @@map("buildings")
+}
+
+// Modelo: FloorConfiguration
+model FloorConfiguration {
+  id              Int      @id @default(autoincrement())
+  buildingId      Int
+  floor           Int
+  apartmentsCount Int
+  
+  // Relación
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  
+  @@index([buildingId])
+  @@map("floor_configurations")
+}
+
+// Modelo: Apartment (Departamento)
+model Apartment {
+  id              Int       @id @default(autoincrement())
+  uniqueId        String    @unique @db.VarChar(50)
+  buildingId      Int
+  floor           Int
+  apartmentLetter String    @db.VarChar(5)
+  nomenclature    String    @db.VarChar(10)
+  area            Float     @default(0)
+  rooms           Int       @default(0)
+  areaPercentage  Float     @default(0)
+  roomPercentage  Float     @default(0)
+  status          String    @default("disponible") @db.VarChar(50)
+  saleStatus      String    @default("no_esta_en_venta") @db.VarChar(50)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relaciones
+  building      Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  contracts     Contract[]
+  rentalHistory RentalHistory[]
+  
+  @@index([buildingId])
+  @@index([status])
+  @@map("apartments")
+}
+
+// Modelo: Tenant (Cliente/Inquilino)
+model Tenant {
+  id             Int       @id @default(autoincrement())
+  nameOrBusiness String    @db.VarChar(255)
+  dniOrCuit      String    @db.VarChar(20)
+  address        String    @db.VarChar(500)
+  contactName    String    @db.VarChar(255)
+  contactPhone   String    @db.VarChar(50)
+  contactEmail   String    @db.VarChar(255)
+  contactAddress String    @db.VarChar(500)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relaciones
+  guarantors    Guarantor[]
+  contracts     Contract[]
+  rentalHistory RentalHistory[]
+  
+  @@index([dniOrCuit])
+  @@map("tenants")
+}
+
+// Modelo: Guarantor (Garante)
+model Guarantor {
+  id        Int      @id @default(autoincrement())
+  tenantId  Int
+  name      String   @db.VarChar(255)
+  dni       String   @db.VarChar(20)
+  address   String   @db.VarChar(500)
+  email     String   @db.VarChar(255)
+  phone     String   @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relaciones
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contracts ContractGuarantor[] @relation("GuarantorToContract")
+  
+  @@index([tenantId])
+  @@map("guarantors")
+}
+
+// Modelo: Contract (Contrato)
+model Contract {
+  id            Int       @id @default(autoincrement())
+  apartmentId   Int
+  tenantId      Int
+  startDate     DateTime
+  endDate       DateTime
+  initialAmount Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relaciones
+  apartment     Apartment       @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  updateRule    UpdateRule?
+  guarantors    ContractGuarantor[] @relation("ContractToGuarantor")
+  
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@map("contracts")
+}
+
+// Modelo: UpdateRule (Regla de Actualización)
+model UpdateRule {
+  id                    Int      @id @default(autoincrement())
+  contractId            Int      @unique
+  updateFrequency       String   @db.VarChar(50)
+  monthlyCoefficient    Float?
+  lateInterestPercent   Float?
+  lateInterestFrequency String?  @db.VarChar(50)
+  
+  // Relaciones
+  contract      Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  updatePeriods UpdatePeriod[]
+  
+  @@map("update_rules")
+}
+
+// Modelo: UpdatePeriod (Período de Actualización)
+model UpdatePeriod {
+  id           Int       @id @default(autoincrement())
+  updateRuleId Int
+  date         DateTime
+  type         String    @db.VarChar(50)
+  value        Float?
+  indexName    String?   @db.VarChar(100)
+  
+  // Relación
+  updateRule UpdateRule @relation(fields: [updateRuleId], references: [id], onDelete: Cascade)
+  
+  @@index([updateRuleId])
+  @@map("update_periods")
+}
+
+// Modelo: ContractGuarantor (Relación muchos a muchos)
+model ContractGuarantor {
+  contractId  Int
+  guarantorId Int
+  
+  contract   Contract  @relation("ContractToGuarantor", fields: [contractId], references: [id], onDelete: Cascade)
+  guarantor  Guarantor @relation("GuarantorToContract", fields: [guarantorId], references: [id], onDelete: Cascade)
+  
+  @@id([contractId, guarantorId])
+  @@map("contract_guarantors")
+}
+
+// Modelo: RentalHistory (Historial de Alquileres)
+model RentalHistory {
+  id            Int      @id @default(autoincrement())
+  apartmentId   Int
+  contractId    Int
+  tenantId      Int
+  tenantName    String   @db.VarChar(255)
+  startDate     DateTime
+  endDate       DateTime
+  initialAmount Float
+  finalAmount   Float?
+  createdAt     DateTime @default(now())
+  
+  // Relaciones
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([apartmentId])
+  @@index([tenantId])
+  @@map("rental_history")
+}
