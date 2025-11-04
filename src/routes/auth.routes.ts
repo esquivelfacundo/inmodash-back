@@ -60,19 +60,27 @@ router.post('/register', async (req, res) => {
     })
 
     // Set cookies
-    res.cookie('auth-token', accessToken, {
+    // Enhanced cookie configuration for mobile compatibility
+    const cookieOptions = {
       httpOnly: true,
-      secure: true, // Always secure for production
-      sameSite: 'none', // Required for cross-domain cookies
+      secure: true,
+      sameSite: 'none' as const,
+      path: '/'
+    };
+
+    res.cookie('auth-token', accessToken, {
+      ...cookieOptions,
       maxAge: 60 * 60 * 1000 // 1 hour
     })
 
     res.cookie('refresh-token', refreshToken, {
-      httpOnly: true,
-      secure: true, // Always secure for production
-      sameSite: 'none', // Required for cross-domain cookies
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
+
+    // Add headers for mobile compatibility
+    res.header('Access-Control-Allow-Credentials', 'true')
+    res.header('Vary', 'Origin')
 
     res.status(201).json({
       success: true,
@@ -147,19 +155,27 @@ router.post('/login', async (req, res) => {
     })
 
     // Set cookies
-    res.cookie('auth-token', accessToken, {
+    // Enhanced cookie configuration for mobile compatibility
+    const cookieOptions = {
       httpOnly: true,
-      secure: true, // Always secure for production
-      sameSite: 'none', // Required for cross-domain cookies
+      secure: true,
+      sameSite: 'none' as const,
+      path: '/'
+    };
+
+    res.cookie('auth-token', accessToken, {
+      ...cookieOptions,
       maxAge: 60 * 60 * 1000 // 1 hour
     })
 
     res.cookie('refresh-token', refreshToken, {
-      httpOnly: true,
-      secure: true, // Always secure for production
-      sameSite: 'none', // Required for cross-domain cookies
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
+
+    // Add headers for mobile compatibility
+    res.header('Access-Control-Allow-Credentials', 'true')
+    res.header('Vary', 'Origin')
 
     res.json({
       success: true,
