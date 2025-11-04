@@ -51,18 +51,20 @@ export class WhatsAppWebhookController {
     try {
       const payload: WhatsAppWebhookPayload = req.body;
 
-      console.log('📨 Received webhook:', JSON.stringify(payload, null, 2));
+      console.log('📨 Received webhook payload:', JSON.stringify(payload, null, 2));
+      console.log('📨 Headers:', JSON.stringify(req.headers, null, 2));
+      console.log('📨 Body type:', typeof req.body);
 
       // Respond immediately to Meta
       res.status(200).send('OK');
 
       // Process webhook asynchronously
       this.processWebhook(payload).catch(error => {
-        console.error('Error processing webhook:', error);
+        console.error('❌ Error processing webhook:', error);
       });
 
     } catch (error: any) {
-      console.error('Error handling webhook:', error);
+      console.error('❌ Error handling webhook:', error);
       return res.status(500).json({
         success: false,
         error: 'Internal server error'
@@ -75,20 +77,31 @@ export class WhatsAppWebhookController {
    */
   private async processWebhook(payload: WhatsAppWebhookPayload) {
     try {
+      console.log('🔄 Processing webhook...');
+      console.log('📦 Payload entries:', payload.entry?.length || 0);
+
       // Extract message data
       for (const entry of payload.entry) {
+        console.log('📥 Processing entry:', entry.id);
+        
         for (const change of entry.changes) {
           const { value } = change;
+          console.log('🔄 Change field:', change.field);
+          console.log('📱 Metadata:', value.metadata);
 
           // Skip if no messages
           if (!value.messages || value.messages.length === 0) {
+            console.log('⚠️  No messages in this change');
             continue;
           }
 
           const phoneNumberId = value.metadata.phone_number_id;
+          console.log('📞 Phone Number ID:', phoneNumberId);
 
           // Get config for this phone number
           const config = await whatsappConfigService.getConfigByPhoneNumberId(phoneNumberId);
+          console.log('⚙️  Config found:', config ? 'YES' : 'NO');
+          console.log('⚙️  Config active:', config?.isActive);
 
           if (!config || !config.isActive) {
             console.log('⚠️  Bot not active or config not found for phone number:', phoneNumberId);
@@ -96,13 +109,14 @@ export class WhatsAppWebhookController {
           }
 
           // Process each message
+          console.log('💬 Processing', value.messages.length, 'message(s)');
           for (const message of value.messages) {
             await this.processIncomingMessage(message, config as any);
           }
         }
       }
     } catch (error) {
-      console.error('Error in processWebhook:', error);
+      console.error('❌ Error in processWebhook:', error);
     }
   }
 
