@@ -60,7 +60,7 @@ model User {
   
   // Relaciones con el sistema inmobiliario (Multi-tenancy)
   buildings  Building[]
-  // apartments Apartment[]  // TEMPORAL: commented until migration is applied
+  apartments Apartment[]
   tenants    Tenant[]
   owners     Owner[]
   contracts  Contract[]
@@ -177,14 +177,14 @@ model Apartment {
   id              Int       @id @default(autoincrement())
   uniqueId        String    @unique @db.VarChar(100)
   
-  // TEMPORAL: userId removed until migration is applied
-  // userId          Int?
+  // Usuario propietario del apartamento (para multi-tenancy)
+  userId          Int?
   
   // Relación con edificio (OPCIONAL para departamentos independientes)
   buildingId      Int?
   floor           Int?
   apartmentLetter String?   @db.VarChar(20)
-  nomenclature    String    @db.VarChar(50)
+  nomenclature    String    @db.VarChar(100)
   
   // Campos para departamentos independientes (cuando no hay edificio)
   fullAddress     String?   @db.Text
@@ -212,15 +212,14 @@ model Apartment {
   updatedAt       DateTime  @updatedAt
   
   // Relaciones
-  // TEMPORAL: user relation commented until migration is applied
-  // user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   building      Building?       @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   owner         Owner?          @relation(fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   contracts     Contract[]
   rentalHistory RentalHistory[]
   documents     Document[]
   
-  // @@index([userId])  // TEMPORAL: commented until migration is applied
+  @@index([userId])
   @@index([buildingId])
   @@index([ownerId])
   @@index([status])

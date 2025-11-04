@@ -3,35 +3,55 @@ import { recalculateApartmentPercentages } from '../utils/calculations'
 import { CreateApartmentDto, UpdateApartmentDto } from '../types'
 
 export const getAll = async (userId: number) => {
-  // Temporary: Use old logic until migration is applied
-  console.log('⚠️ Using fallback logic for getAll (migration pending)')
-  return await prisma.apartment.findMany({
-    where: {
-      OR: [
-        // Apartamentos en edificios del usuario
-        {
-          building: {
-            userId: userId
-          }
+  // Try userId filtering first, fallback to old logic if column doesn't exist
+  try {
+    console.log('🔄 Attempting to get apartments with userId filtering')
+    return await prisma.apartment.findMany({
+      where: {
+        userId: userId
+      },
+      include: {
+        building: true,
+        owner: true,
+        rentalHistory: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+  } catch (error: any) {
+    if (error.message?.includes('column') && error.message?.includes('userId')) {
+      console.log('⚠️ userId column not found, using fallback logic')
+      return await prisma.apartment.findMany({
+        where: {
+          OR: [
+            // Apartamentos en edificios del usuario
+            {
+              building: {
+                userId: userId
+              }
+            },
+            // Apartamentos independientes con propietarios del usuario
+            {
+              buildingId: null,
+              owner: {
+                userId: userId
+              }
+            }
+          ]
         },
-        // Apartamentos independientes con propietarios del usuario
-        {
-          buildingId: null,
-          owner: {
-            userId: userId
-          }
+        include: {
+          building: true,
+          owner: true,
+          rentalHistory: true
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      ]
-    },
-    include: {
-      building: true,
-      owner: true,
-      rentalHistory: true
-    },
-    orderBy: {
-      createdAt: 'desc'
+      })
     }
-  })
+    throw error
+  }
 }
 
 export const getById = async (id: number, userId: number) => {
@@ -100,62 +120,76 @@ export const create = async (data: CreateApartmentDto, userId: number) => {
   console.log('Creating apartment with data:', JSON.stringify(data, null, 2))
   console.log('Specifications:', data.specifications)
   
-  // Temporary: Create without userId until migration is applied
-  console.log('⚠️ Creating apartment without userId (migration pending)')
-  const apartment = await prisma.apartment.create({
-    data: {
-      uniqueId: data.uniqueId,
-      // Campos de edificio (opcionales)
-      buildingId: data.buildingId || null,
-      floor: data.floor || null,
-      apartmentLetter: data.apartmentLetter || null,
-      nomenclature: data.nomenclature,
-      // Campos independientes (opcionales)
-      fullAddress: data.fullAddress || null,
-      city: data.city || null,
-      province: data.province || null,
-      // Propietario
-      ownerId: data.ownerId || null,
-      // Tipo de propiedad
-      propertyType: data.propertyType || 'departamento',
-      // Información general
-      area: data.area || 0,
-      rooms: data.rooms || 0,
-      status: data.status || 'disponible',
-      saleStatus: data.saleStatus || 'no_esta_en_venta',
-      // Especificaciones
-      specifications: data.specifications || null
+  // Try to create with userId, fallback without it if column doesn't exist
+  let apartment
+  try {
+    console.log('🔄 Attempting to create apartment with userId')
+    apartment = await prisma.apartment.create({
+      data: {
+        userId: userId,
+        uniqueId: data.uniqueId,
+        // Campos de edificio (opcionales)
+        buildingId: data.buildingId || null,
+        floor: data.floor || null,
+        apartmentLetter: data.apartmentLetter || null,
+        nomenclature: data.nomenclature,
+        // Campos independientes (opcionales)
+        fullAddress: data.fullAddress || null,
+        city: data.city || null,
+        province: data.province || null,
+        // Propietario
+        ownerId: data.ownerId || null,
+        // Tipo de propiedad
+        propertyType: data.propertyType || 'departamento',
+        // Información general
+        area: data.area || 0,
+        rooms: data.rooms || 0,
+        status: data.status || 'disponible',
+        saleStatus: data.saleStatus || 'no_esta_en_venta',
+        // Especificaciones
+        specifications: data.specifications || null
+      }
+    })
+    console.log('✅ Apartment created with userId successfully')
+  } catch (error: any) {
+    if (error.message?.includes('column') && error.message?.includes('userId')) {
+      console.log('⚠️ userId column not found, creating without it')
+      apartment = await prisma.apartment.create({
+        data: {
+          uniqueId: data.uniqueId,
+          // Campos de edificio (opcionales)
+          buildingId: data.buildingId || null,
+          floor: data.floor || null,
+          apartmentLetter: data.apartmentLetter || null,
+          nomenclature: data.nomenclature,
+          // Campos independientes (opcionales)
+          fullAddress: data.fullAddress || null,
+          city: data.city || null,
+          province: data.province || null,
+          // Propietario
+          ownerId: data.ownerId || null,
+          // Tipo de propiedad
+          propertyType: data.propertyType || 'departamento',
+          // Información general
+          area: data.area || 0,
+          rooms: data.rooms || 0,
+          status: data.status || 'disponible',
+          saleStatus: data.saleStatus || 'no_esta_en_venta',
+          // Especificaciones
+          specifications: data.specifications || null
+        }
+      })
+    } else {
+      throw error
     }
-  })
+  }
 
   // Recalcular porcentajes del edificio solo si pertenece a uno
   if (apartment.buildingId) {
     await recalculateApartmentPercentages(prisma, apartment.buildingId)
   }
 
-  // Return apartment with basic include (no userId filtering)
-  return await prisma.apartment.findUnique({
-    where: { id: apartment.id },
-    include: {
-      building: true,
-      owner: true,
-      contracts: {
-        include: {
-          tenant: true,
-          updateRule: {
-            include: {
-              updatePeriods: true
-            }
-          }
-        }
-      },
-      rentalHistory: {
-        orderBy: {
-          startDate: 'desc'
-        }
-      }
-    }
-  })
+  return await getById(apartment.id, userId)
 }
 
 export const update = async (id: number, data: UpdateApartmentDto, userId: number) => {
