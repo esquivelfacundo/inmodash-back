@@ -5,39 +5,41 @@
 
 import { Router } from 'express';
 import { whatsappConfigController } from '../controllers/config.controller';
+import { webhookController } from '../controllers/webhook.controller';
+import { authenticate } from '../../middleware/auth';
 
 const router = Router();
 
 // ============================================
-// CONFIGURATION ROUTES
+// CONFIGURATION ROUTES (require authentication)
 // ============================================
 
 // Check if tables exist (diagnostic)
-router.get('/config/check', whatsappConfigController.checkTables.bind(whatsappConfigController));
+router.get('/config/check', authenticate, whatsappConfigController.checkTables.bind(whatsappConfigController));
 
 // Save/Update WhatsApp configuration
-router.post('/config', whatsappConfigController.saveConfig.bind(whatsappConfigController));
+router.post('/config', authenticate, whatsappConfigController.saveConfig.bind(whatsappConfigController));
 
 // Get WhatsApp configuration
-router.get('/config', whatsappConfigController.getConfig.bind(whatsappConfigController));
+router.get('/config', authenticate, whatsappConfigController.getConfig.bind(whatsappConfigController));
 
 // Toggle bot active status
-router.patch('/config/toggle', whatsappConfigController.toggleActive.bind(whatsappConfigController));
+router.patch('/config/toggle', authenticate, whatsappConfigController.toggleActive.bind(whatsappConfigController));
 
 // Delete WhatsApp configuration
-router.delete('/config', whatsappConfigController.deleteConfig.bind(whatsappConfigController));
+router.delete('/config', authenticate, whatsappConfigController.deleteConfig.bind(whatsappConfigController));
 
 // Test WhatsApp connection
-router.post('/config/test', whatsappConfigController.testConnection.bind(whatsappConfigController));
+router.post('/config/test', authenticate, whatsappConfigController.testConnection.bind(whatsappConfigController));
 
 // ============================================
-// WEBHOOK ROUTES (will be implemented in Phase 2)
+// WEBHOOK ROUTES
 // ============================================
 
-// Webhook verification (GET)
-// router.get('/webhook', webhookController.verify);
+// Webhook verification (GET) - No authentication required
+router.get('/webhook', webhookController.verify.bind(webhookController));
 
-// Webhook messages (POST)
-// router.post('/webhook', webhookController.handleMessage);
+// Webhook messages (POST) - No authentication required (Meta will send here)
+router.post('/webhook', webhookController.handleMessage.bind(webhookController));
 
 export default router;

@@ -13,6 +13,7 @@ interface Config {
   frontendUrl: string
   databaseUrl: string
   jwtSecret: string
+  openaiApiKey: string
   isDevelopment: boolean
   isProduction: boolean
 }
@@ -23,6 +24,7 @@ const config: Config = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3975',
   databaseUrl: process.env.DATABASE_URL || '',
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+  openaiApiKey: process.env.OPENAI_API_KEY || '',
   isDevelopment: process.env.NODE_ENV !== 'production',
   isProduction: process.env.NODE_ENV === 'production'
 }

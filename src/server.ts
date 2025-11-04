@@ -114,7 +114,8 @@ app.use('/api/owners', ownersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/documents', documentsRoutes)
 app.use('/api/migration', migrationRoutes)
-app.use('/api/whatsapp', authenticate, whatsappRoutes)
+// WhatsApp routes - webhook endpoints don't need auth, config endpoints do
+app.use('/api/whatsapp', whatsappRoutes)
 
 // Error handler (debe ser el último middleware)
 app.use(errorHandler)
