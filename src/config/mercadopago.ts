@@ -39,7 +39,7 @@ export const mercadopagoConfig = {
     defaultCurrency: 'ARS',
     billingFrequency: 1, // Cada 1 mes
     billingFrequencyType: 'months',
-    trialDays: 30,
+    trialDays: 0, // Sin período de prueba
   },
   // URLs de callback y webhook
   webhookUrl: process.env.MP_WEBHOOK_URL || 'https://inmodash-back-production.up.railway.app/api/subscriptions/webhook',

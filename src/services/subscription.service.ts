@@ -52,21 +52,25 @@ export class SubscriptionService {
       trialEndDate.setDate(trialEndDate.getDate() + mercadopagoConfig.subscription.trialDays)
 
       // Crear preapproval (suscripción) en MercadoPago
-      const preApprovalData = {
+      const preApprovalData: any = {
         reason: `InmoDash - Plan ${plan}`,
         auto_recurring: {
           frequency: mercadopagoConfig.subscription.billingFrequency,
           frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
           transaction_amount: amount,
           currency_id: currency,
-          free_trial: {
-            frequency: mercadopagoConfig.subscription.trialDays,
-            frequency_type: 'days' as const,
-          },
         },
         back_url: mercadopagoConfig.successUrl,
         payer_email: email,
         status: 'pending' as const,
+      }
+
+      // Solo agregar free_trial si hay días de prueba
+      if (mercadopagoConfig.subscription.trialDays > 0) {
+        preApprovalData.auto_recurring.free_trial = {
+          frequency: mercadopagoConfig.subscription.trialDays,
+          frequency_type: 'days' as const,
+        }
       }
 
       logger.info('Creating MercadoPago preapproval', preApprovalData)
@@ -79,35 +83,27 @@ export class SubscriptionService {
         initPoint: preApproval.init_point,
       })
 
-      // Guardar suscripción en la base de datos
+      // Guardar suscripción en la base de datos como pendiente
+      // Solo se activará cuando el webhook confirme el pago
       const subscription = await prisma.subscription.create({
         data: {
           userId,
           mercadopagoPreapprovalId: preApproval.id,
           plan,
-          status: 'pending',
+          status: 'pending', // Pendiente hasta que se confirme el pago
           amount,
           currency,
           frequency: mercadopagoConfig.subscription.billingFrequency,
           frequencyType: mercadopagoConfig.subscription.billingFrequencyType,
           startDate,
-          isTrialActive: true,
-          trialEndDate,
-          nextBillingDate: trialEndDate,
+          isTrialActive: false, // Sin trial
+          trialEndDate: mercadopagoConfig.subscription.trialDays > 0 ? trialEndDate : null,
+          nextBillingDate: null, // Se establecerá cuando se confirme el pago
         },
       })
 
-      // Actualizar usuario con información de suscripción
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          subscriptionStatus: 'trial',
-          subscriptionPlan: plan,
-          subscriptionStartDate: startDate,
-          trialEndsAt: trialEndDate,
-          nextPaymentDate: trialEndDate,
-        },
-      })
+      // NO actualizar el usuario hasta que se confirme el pago
+      // Esto se hará en el webhook cuando llegue la confirmación
 
       logger.info('Subscription created in database', { subscriptionId: subscription.id })
 
@@ -312,10 +308,12 @@ export class SubscriptionService {
    */
   async getUserSubscription(userId: number) {
     try {
+      // Solo devolver suscripciones autorizadas o pausadas
+      // No devolver suscripciones pendientes (esperando pago)
       const subscription = await prisma.subscription.findFirst({
         where: {
           userId,
-          status: { in: ['pending', 'authorized', 'paused'] },
+          status: { in: ['authorized', 'paused'] },
         },
         include: {
           payments: {
