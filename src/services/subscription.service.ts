@@ -44,7 +44,15 @@ export class SubscriptionService {
         currency = mercadopagoConfig.subscription.defaultCurrency,
       } = params
 
-      logger.info('Creating subscription for user', { userId, email, plan, amount })
+      logger.info('Creating subscription for user', { 
+        userId, 
+        email, 
+        plan, 
+        amount,
+        isProduction: mercadopagoConfig.isProduction,
+        useTestCredentials: mercadopagoConfig.useTestCredentials,
+        accessTokenPrefix: mercadopagoConfig.accessToken.substring(0, 20) + '...'
+      })
 
       // Calcular fechas
       const startDate = new Date()
