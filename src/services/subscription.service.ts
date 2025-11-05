@@ -38,11 +38,11 @@ export class SubscriptionService {
    */
   private async getOrCreatePlan(amount: number, currency: string): Promise<string> {
     try {
-      // Si ya tenemos un planId, lo retornamos
-      if (this.planId) {
-        logger.info('Using existing plan', { planId: this.planId })
-        return this.planId
-      }
+      // Forzar creación de nuevo plan con configuración mejorada
+      // if (this.planId) {
+      //   logger.info('Using existing plan', { planId: this.planId })
+      //   return this.planId
+      // }
 
       // Crear un nuevo plan
       const planData = {
@@ -52,6 +52,18 @@ export class SubscriptionService {
           frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
           transaction_amount: amount,
           currency_id: currency,
+          billing_day_proportional: false,
+        },
+        payment_methods_allowed: {
+          payment_types: [
+            {
+              id: 'credit_card',
+            },
+            {
+              id: 'debit_card',
+            },
+          ],
+          payment_methods: [],
         },
         back_url: mercadopagoConfig.successUrl,
       }
