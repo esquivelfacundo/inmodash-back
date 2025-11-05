@@ -63,6 +63,8 @@ export class SubscriptionService {
         back_url: mercadopagoConfig.successUrl,
         payer_email: email,
         status: 'pending' as const,
+        // Agregar información del pagador para pre-llenar el formulario
+        external_reference: `user_${userId}`,
       }
 
       // Solo agregar free_trial si hay días de prueba
