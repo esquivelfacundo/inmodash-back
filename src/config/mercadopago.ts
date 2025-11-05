@@ -1,9 +1,10 @@
 import { MercadoPagoConfig } from 'mercadopago'
 
 // Determinar si estamos en modo de prueba o producción
-const isProduction = process.env.NODE_ENV === 'production'
 // Solo usar TEST si MP_USE_TEST está explícitamente en 'true'
 const useTestCredentials = process.env.MP_USE_TEST === 'true'
+// isProduction debe ser false si estamos usando credenciales de test
+const isProduction = !useTestCredentials && process.env.NODE_ENV === 'production'
 
 console.log('🔧 MercadoPago Config:', {
   NODE_ENV: process.env.NODE_ENV,
