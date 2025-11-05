@@ -35,7 +35,7 @@ export const mercadopagoConfig = {
   // Configuración de suscripciones
   subscription: {
     defaultPlan: 'professional',
-    defaultAmount: 1, // ARS (para pruebas)
+    defaultAmount: 15, // ARS (mínimo de MercadoPago)
     defaultCurrency: 'ARS',
     billingFrequency: 1, // Cada 1 mes
     billingFrequencyType: 'months',
