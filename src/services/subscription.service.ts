@@ -117,10 +117,16 @@ export class SubscriptionService {
         initPoint: preApproval.init_point,
       }
     } catch (error) {
-      logger.error('Error creating subscription', error)
+      logger.error('Error creating subscription', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        errorType: typeof error,
+        errorDetails: JSON.stringify(error, null, 2)
+      })
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : JSON.stringify(error),
       }
     }
   }
