@@ -70,6 +70,9 @@ model User {
   // Relación con WhatsApp Bot
   whatsappConfig WhatsAppConfig?
   
+  // Relación con Suscripciones de MercadoPago
+  subscriptions Subscription[]
+  
   @@index([email])
   @@index([role])
   @@map("users")
@@ -519,4 +522,92 @@ model Message {
   @@index([messageId])
   @@index([createdAt])
   @@map("messages")
+}
+
+// ============================================
+// MERCADOPAGO SUBSCRIPTION MODELS
+// ============================================
+
+// Modelo: Subscription (Suscripciones de MercadoPago)
+model Subscription {
+  id                        Int       @id @default(autoincrement())
+  userId                    Int
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // MercadoPago IDs
+  mercadopagoSubscriptionId String?   @unique @db.VarChar(255) // ID de la suscripción en MP
+  mercadopagoCustomerId     String?   @db.VarChar(255) // ID del cliente en MP
+  mercadopagoPreapprovalId  String?   @unique @db.VarChar(255) // ID del preapproval plan
+  
+  // Subscription Details
+  plan                      String    @db.VarChar(50) // professional, enterprise, etc
+  status                    String    @db.VarChar(50) // pending, authorized, paused, cancelled
+  amount                    Float     // Monto mensual
+  currency                  String    @default("ARS") @db.VarChar(10) // ARS, USD, etc
+  
+  // Billing Cycle
+  billingDay                Int?      // Día del mes para cobro (1-31)
+  frequency                 Int       @default(1) // Frecuencia en meses
+  frequencyType             String    @default("months") @db.VarChar(20) // months, days
+  
+  // Dates
+  startDate                 DateTime  // Fecha de inicio
+  nextBillingDate           DateTime? // Próxima fecha de cobro
+  endDate                   DateTime? // Fecha de finalización (si aplica)
+  
+  // Payment Info
+  lastPaymentDate           DateTime?
+  lastPaymentStatus         String?   @db.VarChar(50)
+  lastPaymentAmount         Float?
+  
+  // Trial
+  isTrialActive             Boolean   @default(false)
+  trialEndDate              DateTime?
+  
+  // Metadata
+  metadata                  String?   @db.Text // JSON con info adicional
+  
+  // Timestamps
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  
+  // Relaciones
+  payments                  SubscriptionPayment[]
+  
+  @@index([userId])
+  @@index([mercadopagoSubscriptionId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// Modelo: SubscriptionPayment (Pagos de Suscripción)
+model SubscriptionPayment {
+  id                    Int          @id @default(autoincrement())
+  subscriptionId        Int
+  subscription          Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  // MercadoPago Payment Info
+  mercadopagoPaymentId  String       @unique @db.VarChar(255)
+  
+  // Payment Details
+  amount                Float
+  currency              String       @db.VarChar(10)
+  status                String       @db.VarChar(50) // approved, pending, rejected, refunded
+  statusDetail          String?      @db.VarChar(255)
+  
+  // Payment Method
+  paymentMethodId       String?      @db.VarChar(255)
+  paymentType           String?      @db.VarChar(50) // credit_card, debit_card, etc
+  
+  // Dates
+  paidAt                DateTime?
+  createdAt             DateTime     @default(now())
+  
+  // Metadata
+  metadata              String?      @db.Text // JSON con info adicional de MP
+  
+  @@index([subscriptionId])
+  @@index([mercadopagoPaymentId])
+  @@index([status])
+  @@map("subscription_payments")
 }

@@ -100,6 +100,7 @@ import paymentsRoutes from './routes/payments.routes'
 import documentsRoutes from './routes/documents.routes'
 import migrationRoutes from './routes/migration.routes'
 import whatsappRoutes from './whatsapp/routes/index'
+import subscriptionRoutes from './routes/subscription.routes'
 import { authenticate } from './middleware/auth'
 
 // Usar rutas
@@ -116,6 +117,8 @@ app.use('/api/documents', documentsRoutes)
 app.use('/api/migration', migrationRoutes)
 // WhatsApp routes - webhook endpoints don't need auth, config endpoints do
 app.use('/api/whatsapp', whatsappRoutes)
+// Subscription routes - MercadoPago integration
+app.use('/api/subscriptions', subscriptionRoutes)
 
 // Error handler (debe ser el último middleware)
 app.use(errorHandler)
