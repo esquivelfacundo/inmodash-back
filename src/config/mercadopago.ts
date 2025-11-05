@@ -2,7 +2,17 @@ import { MercadoPagoConfig } from 'mercadopago'
 
 // Determinar si estamos en modo de prueba o producción
 const isProduction = process.env.NODE_ENV === 'production'
-const useTestCredentials = process.env.MP_USE_TEST === 'true' || !isProduction
+// Solo usar TEST si MP_USE_TEST está explícitamente en 'true'
+const useTestCredentials = process.env.MP_USE_TEST === 'true'
+
+console.log('🔧 MercadoPago Config:', {
+  NODE_ENV: process.env.NODE_ENV,
+  MP_USE_TEST: process.env.MP_USE_TEST,
+  isProduction,
+  useTestCredentials,
+  hasTestToken: !!process.env.MP_ACCESS_TOKEN_TEST,
+  hasProdToken: !!process.env.MP_ACCESS_TOKEN_PROD,
+})
 
 // Credenciales de MercadoPago
 const accessToken = useTestCredentials
@@ -14,7 +24,7 @@ const publicKey = useTestCredentials
   : process.env.MP_PUBLIC_KEY_PROD || ''
 
 if (!accessToken) {
-  throw new Error('MercadoPago Access Token is not configured')
+  throw new Error(`MercadoPago Access Token is not configured. Using ${useTestCredentials ? 'TEST' : 'PROD'} credentials.`)
 }
 
 // Configuración del cliente de MercadoPago
