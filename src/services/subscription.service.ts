@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { PreApproval, Payment } from 'mercadopago'
+import { PreApproval, PreApprovalPlan, Payment } from 'mercadopago'
 import { mercadopagoClient, mercadopagoConfig } from '../config/mercadopago'
 import { logger } from '../utils/logger'
 
@@ -11,8 +11,7 @@ interface CreateSubscriptionParams {
   plan?: string
   amount?: number
   currency?: string
-  paymentMethodId?: string
-  cardToken?: string
+  cardToken: string // Ahora es obligatorio
 }
 
 interface SubscriptionResult {
@@ -24,15 +23,57 @@ interface SubscriptionResult {
 
 export class SubscriptionService {
   private preApprovalClient: PreApproval
+  private preApprovalPlanClient: PreApprovalPlan
   private paymentClient: Payment
+  private planId: string | null = null
 
   constructor() {
     this.preApprovalClient = new PreApproval(mercadopagoClient)
+    this.preApprovalPlanClient = new PreApprovalPlan(mercadopagoClient)
     this.paymentClient = new Payment(mercadopagoClient)
   }
 
   /**
-   * Crear una suscripción recurrente en MercadoPago
+   * Crear o obtener el plan de suscripción
+   */
+  private async getOrCreatePlan(amount: number, currency: string): Promise<string> {
+    try {
+      // Si ya tenemos un planId, lo retornamos
+      if (this.planId) {
+        logger.info('Using existing plan', { planId: this.planId })
+        return this.planId
+      }
+
+      // Crear un nuevo plan
+      const planData = {
+        reason: `InmoDash - Plan Professional`,
+        auto_recurring: {
+          frequency: mercadopagoConfig.subscription.billingFrequency,
+          frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
+          transaction_amount: amount,
+          currency_id: currency,
+        },
+        back_url: mercadopagoConfig.successUrl,
+      }
+
+      logger.info('Creating MercadoPago subscription plan', planData)
+
+      const plan = await this.preApprovalPlanClient.create({ body: planData })
+
+      logger.info('MercadoPago plan created', {
+        id: plan.id,
+      })
+
+      this.planId = plan.id!
+      return this.planId
+    } catch (error) {
+      logger.error('Error creating subscription plan', error)
+      throw error
+    }
+  }
+
+  /**
+   * Crear una suscripción recurrente en MercadoPago con plan asociado
    */
   async createSubscription(params: CreateSubscriptionParams): Promise<SubscriptionResult> {
     try {
@@ -42,6 +83,7 @@ export class SubscriptionService {
         plan = mercadopagoConfig.subscription.defaultPlan,
         amount = mercadopagoConfig.subscription.defaultAmount,
         currency = mercadopagoConfig.subscription.defaultCurrency,
+        cardToken,
       } = params
 
       logger.info('Creating subscription for user', { 
@@ -49,78 +91,86 @@ export class SubscriptionService {
         email, 
         plan, 
         amount,
+        hasCardToken: !!cardToken,
         isProduction: mercadopagoConfig.isProduction,
         useTestCredentials: mercadopagoConfig.useTestCredentials,
         accessTokenPrefix: mercadopagoConfig.accessToken.substring(0, 20) + '...'
       })
 
+      // Obtener o crear el plan de suscripción
+      const planId = await this.getOrCreatePlan(amount, currency)
+
       // Calcular fechas
       const startDate = new Date()
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + mercadopagoConfig.subscription.trialDays)
+      const nextBillingDate = new Date()
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
-      // Crear preapproval (suscripción) en MercadoPago
+      // Crear preapproval (suscripción) con plan asociado
       const preApprovalData: any = {
+        preapproval_plan_id: planId,
         reason: `InmoDash - Plan ${plan}`,
+        external_reference: `user_${userId}`,
+        payer_email: email,
+        card_token_id: cardToken,
         auto_recurring: {
           frequency: mercadopagoConfig.subscription.billingFrequency,
           frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
+          start_date: startDate.toISOString(),
           transaction_amount: amount,
           currency_id: currency,
         },
         back_url: mercadopagoConfig.successUrl,
-        payer_email: email,
-        status: 'pending' as const,
-        // Agregar información del pagador para pre-llenar el formulario
-        external_reference: `user_${userId}`,
+        status: 'authorized' as const, // Autorizado desde el inicio
       }
 
-      // Solo agregar free_trial si hay días de prueba
-      if (mercadopagoConfig.subscription.trialDays > 0) {
-        preApprovalData.auto_recurring.free_trial = {
-          frequency: mercadopagoConfig.subscription.trialDays,
-          frequency_type: 'days' as const,
-        }
-      }
-
-      logger.info('Creating MercadoPago preapproval', preApprovalData)
+      logger.info('Creating MercadoPago preapproval with plan', {
+        planId,
+        ...preApprovalData,
+        card_token_id: '***' // No loguear el token completo
+      })
 
       const preApproval = await this.preApprovalClient.create({ body: preApprovalData })
 
       logger.info('MercadoPago preapproval created', {
         id: preApproval.id,
         status: preApproval.status,
-        initPoint: preApproval.init_point,
       })
 
-      // Guardar suscripción en la base de datos como pendiente
-      // Solo se activará cuando el webhook confirme el pago
+      // Guardar suscripción en la base de datos como autorizada
       const subscription = await prisma.subscription.create({
         data: {
           userId,
           mercadopagoPreapprovalId: preApproval.id,
           plan,
-          status: 'pending', // Pendiente hasta que se confirme el pago
+          status: 'authorized', // Autorizada desde el inicio
           amount,
           currency,
           frequency: mercadopagoConfig.subscription.billingFrequency,
           frequencyType: mercadopagoConfig.subscription.billingFrequencyType,
           startDate,
           isTrialActive: false, // Sin trial
-          trialEndDate: mercadopagoConfig.subscription.trialDays > 0 ? trialEndDate : null,
-          nextBillingDate: null, // Se establecerá cuando se confirme el pago
+          trialEndDate: null,
+          nextBillingDate, // Próximo cobro en 1 mes
         },
       })
 
-      // NO actualizar el usuario hasta que se confirme el pago
-      // Esto se hará en el webhook cuando llegue la confirmación
+      // Actualizar usuario con suscripción activa
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'active',
+          subscriptionPlan: plan,
+          subscriptionStartDate: startDate,
+          nextPaymentDate: nextBillingDate,
+        },
+      })
 
       logger.info('Subscription created in database', { subscriptionId: subscription.id })
 
       return {
         success: true,
         subscription,
-        initPoint: preApproval.init_point,
+        // No hay initPoint porque la suscripción ya está autorizada
       }
     } catch (error) {
       logger.error('Error creating subscription', {
