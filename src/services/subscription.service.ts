@@ -148,6 +148,74 @@ export class SubscriptionService {
         status: preApproval.status,
       })
 
+      // Procesar pago inicial inmediato
+      let initialPaymentId: string | null = null
+      try {
+        logger.info('Processing initial payment', {
+          amount,
+          currency,
+          cardToken: '***'
+        })
+
+        const paymentData = {
+          transaction_amount: amount,
+          token: cardToken,
+          description: `InmoDash - Pago inicial Plan ${plan}`,
+          installments: 1,
+          payment_method_id: 'visa', // Se detectará automáticamente del token
+          payer: {
+            email: email,
+          },
+          external_reference: `subscription_${preApproval.id}_initial`,
+        }
+
+        const payment = await this.paymentClient.create({ body: paymentData })
+
+        logger.info('Initial payment processed', {
+          paymentId: payment.id,
+          status: payment.status,
+          statusDetail: payment.status_detail,
+        })
+
+        initialPaymentId = payment.id?.toString() || null
+
+        // Si el pago fue rechazado, cancelar la suscripción
+        if (payment.status === 'rejected') {
+          logger.error('Initial payment rejected, cancelling subscription', {
+            paymentId: payment.id,
+            statusDetail: payment.status_detail,
+          })
+
+          // Cancelar la suscripción recién creada
+          await this.preApprovalClient.update({
+            id: preApproval.id!,
+            body: { status: 'cancelled' }
+          })
+
+          return {
+            success: false,
+            error: `Pago rechazado: ${payment.status_detail}`,
+          }
+        }
+      } catch (paymentError) {
+        logger.error('Error processing initial payment', paymentError)
+        
+        // Cancelar la suscripción si el pago falla
+        try {
+          await this.preApprovalClient.update({
+            id: preApproval.id!,
+            body: { status: 'cancelled' }
+          })
+        } catch (cancelError) {
+          logger.error('Error cancelling subscription after payment failure', cancelError)
+        }
+
+        return {
+          success: false,
+          error: 'Error al procesar el pago inicial',
+        }
+      }
+
       // Guardar suscripción en la base de datos como autorizada
       const subscription = await prisma.subscription.create({
         data: {
@@ -166,6 +234,25 @@ export class SubscriptionService {
         },
       })
 
+      // Guardar el pago inicial en la base de datos si existe
+      if (initialPaymentId) {
+        await prisma.subscriptionPayment.create({
+          data: {
+            subscriptionId: subscription.id,
+            mercadopagoPaymentId: initialPaymentId,
+            amount,
+            currency,
+            status: 'approved',
+            metadata: JSON.stringify({ type: 'initial_payment', description: `Pago inicial - Plan ${plan}` }),
+          },
+        })
+
+        logger.info('Initial payment saved in database', {
+          subscriptionId: subscription.id,
+          paymentId: initialPaymentId,
+        })
+      }
+
       // Actualizar usuario con suscripción activa
       await prisma.user.update({
         where: { id: userId },
@@ -177,7 +264,10 @@ export class SubscriptionService {
         },
       })
 
-      logger.info('Subscription created in database', { subscriptionId: subscription.id })
+      logger.info('Subscription created in database', { 
+        subscriptionId: subscription.id,
+        initialPaymentId,
+      })
 
       return {
         success: true,
