@@ -35,8 +35,8 @@ export const mercadopagoConfig = {
   // Configuración de suscripciones
   subscription: {
     defaultPlan: 'professional',
-    defaultAmount: 289, // USD
-    defaultCurrency: 'USD',
+    defaultAmount: 50000, // ARS (aproximadamente 50 USD al cambio actual)
+    defaultCurrency: 'ARS',
     billingFrequency: 1, // Cada 1 mes
     billingFrequencyType: 'months',
     trialDays: 30,
