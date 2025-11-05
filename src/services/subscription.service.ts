@@ -38,11 +38,11 @@ export class SubscriptionService {
    */
   private async getOrCreatePlan(amount: number, currency: string): Promise<string> {
     try {
-      // Forzar creación de nuevo plan con configuración mejorada
-      // if (this.planId) {
-      //   logger.info('Using existing plan', { planId: this.planId })
-      //   return this.planId
-      // }
+      // Si ya tenemos un planId, lo retornamos (reutilizar el mismo plan)
+      if (this.planId) {
+        logger.info('Using existing plan', { planId: this.planId })
+        return this.planId
+      }
 
       // Crear un nuevo plan con billing_day para cobro inmediato
       const today = new Date()
@@ -50,6 +50,7 @@ export class SubscriptionService {
       
       const planData = {
         reason: `InmoDash - Plan Professional`,
+        external_reference: 'inmodash-professional-plan', // Referencia única del plan
         auto_recurring: {
           frequency: mercadopagoConfig.subscription.billingFrequency,
           frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
@@ -78,6 +79,7 @@ export class SubscriptionService {
 
       logger.info('MercadoPago plan created', {
         id: plan.id,
+        external_reference: 'inmodash-professional-plan',
       })
 
       this.planId = plan.id!
@@ -313,24 +315,58 @@ export class SubscriptionService {
         id: payment.id,
         status: payment.status,
         amount: payment.transaction_amount,
+        externalReference: payment.external_reference,
+        payerEmail: payment.payer?.email,
       })
 
-      // Buscar suscripción asociada
-      const preapprovalId = payment.metadata?.preapproval_id
-
-      if (!preapprovalId) {
-        logger.warn('Payment without preapproval_id', { paymentId })
-        return
+      // Buscar suscripción asociada por external_reference o email del pagador
+      let subscription = null
+      
+      // Intentar buscar por external_reference (formato: user_X)
+      if (payment.external_reference) {
+        const match = payment.external_reference.match(/user_(\d+)/)
+        if (match) {
+          const userId = parseInt(match[1])
+          subscription = await prisma.subscription.findFirst({
+            where: { 
+              userId,
+              status: { in: ['pending', 'authorized', 'paused'] }
+            },
+            orderBy: { createdAt: 'desc' }
+          })
+        }
       }
 
-      const subscription = await prisma.subscription.findUnique({
-        where: { mercadopagoPreapprovalId: preapprovalId },
-      })
+      // Si no se encontró, buscar por email del pagador
+      if (!subscription && payment.payer?.email) {
+        const user = await prisma.user.findUnique({
+          where: { email: payment.payer.email }
+        })
+        
+        if (user) {
+          subscription = await prisma.subscription.findFirst({
+            where: { 
+              userId: user.id,
+              status: { in: ['pending', 'authorized', 'paused'] }
+            },
+            orderBy: { createdAt: 'desc' }
+          })
+        }
+      }
 
       if (!subscription) {
-        logger.error('Subscription not found for payment', { paymentId, preapprovalId })
+        logger.error('Subscription not found for payment', { 
+          paymentId, 
+          externalReference: payment.external_reference,
+          payerEmail: payment.payer?.email
+        })
         return
       }
+
+      logger.info('Subscription found for payment', {
+        subscriptionId: subscription.id,
+        userId: subscription.userId
+      })
 
       // Registrar el pago
       await prisma.subscriptionPayment.create({
