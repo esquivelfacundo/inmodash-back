@@ -41,11 +41,11 @@ export const mercadopagoConfig = {
     billingFrequencyType: 'months',
     trialDays: 30,
   },
-  // URLs de callback
+  // URLs de callback y webhook
   webhookUrl: process.env.MP_WEBHOOK_URL || 'https://inmodash-back-production.up.railway.app/api/subscriptions/webhook',
-  successUrl: process.env.MP_SUCCESS_URL || 'https://inmodash-front.vercel.app/dashboard?payment=success',
-  failureUrl: process.env.MP_FAILURE_URL || 'https://inmodash-front.vercel.app/register?payment=failure',
-  pendingUrl: process.env.MP_PENDING_URL || 'https://inmodash-front.vercel.app/dashboard?payment=pending',
+  successUrl: process.env.MP_SUCCESS_URL || 'https://inmodash.com.ar/dashboard?payment=success',
+  failureUrl: process.env.MP_FAILURE_URL || 'https://inmodash.com.ar/register?payment=failure',
+  pendingUrl: process.env.MP_PENDING_URL || 'https://inmodash.com.ar/dashboard?payment=pending',
 }
 
 export default mercadopagoClient
