@@ -154,10 +154,7 @@ export class SubscriptionService {
         status: preApproval.status,
       })
 
-      // Nota: El pago inicial se procesará automáticamente por MercadoPago
-      // cuando la suscripción esté autorizada. No necesitamos hacer un cargo manual.
-      
-      // Guardar suscripción en la base de datos como autorizada
+      // Guardar suscripción en la base de datos PRIMERO
       const subscription = await prisma.subscription.create({
         data: {
           userId,
@@ -189,6 +186,68 @@ export class SubscriptionService {
       logger.info('Subscription created in database', { 
         subscriptionId: subscription.id,
       })
+
+      // Procesar el primer pago manualmente
+      logger.info('Processing first payment manually', {
+        subscriptionId: subscription.id,
+        amount,
+        cardToken
+      })
+
+      try {
+        const paymentData = {
+          transaction_amount: amount,
+          token: cardToken,
+          description: `InmoDash - ${plan} - Primer pago`,
+          installments: 1,
+          payment_method_id: 'visa', // Se detectará automáticamente del token
+          payer: {
+            email,
+          },
+          external_reference: `user_${userId}`,
+          metadata: {
+            subscription_id: subscription.id,
+            preapproval_id: preApproval.id,
+            user_id: userId,
+          },
+        }
+
+        const payment = await this.paymentClient.create({ body: paymentData })
+
+        logger.info('First payment processed', {
+          paymentId: payment.id,
+          status: payment.status,
+          amount: payment.transaction_amount,
+        })
+
+        // Si el pago fue aprobado, guardarlo
+        if (payment.status === 'approved') {
+          await prisma.subscriptionPayment.create({
+            data: {
+              subscriptionId: subscription.id,
+              mercadopagoPaymentId: payment.id!.toString(),
+              amount: payment.transaction_amount!,
+              currency: payment.currency_id!,
+              status: payment.status!,
+              statusDetail: payment.status_detail || null,
+              paymentMethodId: payment.payment_method_id || null,
+              paymentType: payment.payment_type_id || null,
+              paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+              metadata: JSON.stringify(payment),
+            },
+          })
+
+          logger.info('First payment saved to database')
+        } else {
+          logger.warn('First payment not approved', {
+            status: payment.status,
+            statusDetail: payment.status_detail,
+          })
+        }
+      } catch (paymentError) {
+        logger.error('Error processing first payment', paymentError)
+        // No fallar la suscripción si el pago falla, el webhook lo reintentará
+      }
 
       return {
         success: true,
