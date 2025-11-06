@@ -58,15 +58,15 @@ router.delete('/clean-all', async (req, res) => {
     // Reset user subscription status
     const updatedUsers = await prisma.user.updateMany({
       where: {
-        subscriptionStatus: { not: null }
+        subscriptionStatus: { not: undefined }
       },
       data: {
-        subscriptionStatus: null,
-        subscriptionPlan: null,
-        subscriptionStartDate: null,
-        subscriptionEndDate: null,
-        lastPaymentDate: null,
-        nextPaymentDate: null,
+        subscriptionStatus: undefined,
+        subscriptionPlan: undefined,
+        subscriptionStartDate: undefined,
+        subscriptionEndDate: undefined,
+        lastPaymentDate: undefined,
+        nextPaymentDate: undefined,
       },
     })
 
