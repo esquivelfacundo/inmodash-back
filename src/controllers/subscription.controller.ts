@@ -110,17 +110,31 @@ export const handleWebhook = async (req: Request, res: Response) => {
       query: req.query,
     })
 
-    // MercadoPago envía el tipo de notificación en el query string
-    const { type, 'data.id': dataId } = req.query
+    // MercadoPago puede enviar en dos formatos:
+    // Formato nuevo: type + data.id
+    // Formato antiguo: topic + resource
+    const { type, 'data.id': dataId, topic, id } = req.query
+    
+    // Determinar el tipo de notificación
+    let notificationType = type || req.body.type || topic || req.body.topic
+    let notificationId = dataId || req.body.data?.id || id || req.body.resource
+    
+    // Mapear topic antiguo a type nuevo
+    if (topic === 'payment' || req.body.topic === 'payment') {
+      notificationType = 'payment'
+    } else if (topic === 'merchant_order' || req.body.topic === 'merchant_order') {
+      notificationType = 'merchant_order'
+    }
 
-    // También puede venir en el body
     const webhookData = {
-      type: type || req.body.type,
+      type: notificationType,
       action: req.body.action,
       data: {
-        id: dataId || req.body.data?.id,
+        id: notificationId,
       },
     }
+    
+    logger.info('Processing MercadoPago webhook', webhookData)
 
     // Procesar el webhook de forma asíncrona
     await subscriptionService.processWebhook(webhookData)
