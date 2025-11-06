@@ -40,4 +40,49 @@ router.post('/webhook', handleWebhook)
  */
 router.get('/webhook', handleWebhook)
 
+/**
+ * DELETE /api/subscriptions/clean-all
+ * TEMPORARY: Clean all subscriptions (for testing)
+ */
+router.delete('/clean-all', async (req, res) => {
+  try {
+    const { PrismaClient } = await import('@prisma/client')
+    const prisma = new PrismaClient()
+
+    // Delete all subscription payments first
+    const deletedPayments = await prisma.subscriptionPayment.deleteMany({})
+    
+    // Delete all subscriptions
+    const deletedSubscriptions = await prisma.subscription.deleteMany({})
+    
+    // Reset user subscription status
+    const updatedUsers = await prisma.user.updateMany({
+      where: {
+        subscriptionStatus: { not: null }
+      },
+      data: {
+        subscriptionStatus: null,
+        subscriptionPlan: null,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        lastPaymentDate: null,
+        nextPaymentDate: null,
+      },
+    })
+
+    await prisma.$disconnect()
+
+    res.json({
+      success: true,
+      message: 'All subscriptions cleaned',
+      deletedPayments: deletedPayments.count,
+      deletedSubscriptions: deletedSubscriptions.count,
+      updatedUsers: updatedUsers.count,
+    })
+  } catch (error) {
+    console.error('Error cleaning subscriptions:', error)
+    res.status(500).json({ error: 'Failed to clean subscriptions' })
+  }
+})
+
 export default router
