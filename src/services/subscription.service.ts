@@ -38,13 +38,18 @@ export class SubscriptionService {
    */
   private async getOrCreatePlan(amount: number, currency: string): Promise<string> {
     try {
-      // Si ya tenemos un planId, lo retornamos (reutilizar el mismo plan)
-      if (this.planId) {
-        logger.info('Using existing plan', { planId: this.planId })
+      // Usar plan fijo hardcodeado (el último creado en MercadoPago)
+      // Esto evita crear múltiples planes y asegura que todos usen el mismo
+      const FIXED_PLAN_ID = '35c6eb368b2343dd8b5d73b234213ba2' // Plan con external_reference: inmodash-professional-plan
+      
+      if (FIXED_PLAN_ID) {
+        this.planId = FIXED_PLAN_ID
+        logger.info('Using fixed plan ID', { planId: this.planId })
         return this.planId
       }
 
-      // Crear un nuevo plan con billing_day para cobro inmediato
+      // Crear un nuevo plan solo si no existe el fijo (fallback)
+      // Este código solo se ejecutará si el FIXED_PLAN_ID está vacío
       const today = new Date()
       const billingDay = today.getDate()
       
