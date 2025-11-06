@@ -124,19 +124,13 @@ export class SubscriptionService {
       nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
 
       // Crear preapproval (suscripción) con plan asociado
+      // No enviamos auto_recurring porque ya está en el plan
       const preApprovalData: any = {
         preapproval_plan_id: planId,
         reason: `InmoDash - Plan ${plan}`,
         external_reference: `user_${userId}`,
         payer_email: email,
         card_token_id: cardToken,
-        auto_recurring: {
-          frequency: mercadopagoConfig.subscription.billingFrequency,
-          frequency_type: mercadopagoConfig.subscription.billingFrequencyType as 'months' | 'days',
-          start_date: startDate.toISOString(),
-          transaction_amount: amount,
-          currency_id: currency,
-        },
         back_url: mercadopagoConfig.successUrl,
         status: 'authorized' as const, // Autorizado desde el inicio
       }
@@ -187,67 +181,9 @@ export class SubscriptionService {
         subscriptionId: subscription.id,
       })
 
-      // Procesar el primer pago manualmente
-      logger.info('Processing first payment manually', {
-        subscriptionId: subscription.id,
-        amount,
-        cardToken
-      })
-
-      try {
-        const paymentData = {
-          transaction_amount: amount,
-          token: cardToken,
-          description: `InmoDash - ${plan} - Primer pago`,
-          installments: 1,
-          payment_method_id: 'visa', // Se detectará automáticamente del token
-          payer: {
-            email,
-          },
-          external_reference: `user_${userId}`,
-          metadata: {
-            subscription_id: subscription.id,
-            preapproval_id: preApproval.id,
-            user_id: userId,
-          },
-        }
-
-        const payment = await this.paymentClient.create({ body: paymentData })
-
-        logger.info('First payment processed', {
-          paymentId: payment.id,
-          status: payment.status,
-          amount: payment.transaction_amount,
-        })
-
-        // Si el pago fue aprobado, guardarlo
-        if (payment.status === 'approved') {
-          await prisma.subscriptionPayment.create({
-            data: {
-              subscriptionId: subscription.id,
-              mercadopagoPaymentId: payment.id!.toString(),
-              amount: payment.transaction_amount!,
-              currency: payment.currency_id!,
-              status: payment.status!,
-              statusDetail: payment.status_detail || null,
-              paymentMethodId: payment.payment_method_id || null,
-              paymentType: payment.payment_type_id || null,
-              paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
-              metadata: JSON.stringify(payment),
-            },
-          })
-
-          logger.info('First payment saved to database')
-        } else {
-          logger.warn('First payment not approved', {
-            status: payment.status,
-            statusDetail: payment.status_detail,
-          })
-        }
-      } catch (paymentError) {
-        logger.error('Error processing first payment', paymentError)
-        // No fallar la suscripción si el pago falla, el webhook lo reintentará
-      }
+      // MercadoPago procesará el primer pago automáticamente
+      // El webhook recibirá la notificación y guardará el pago en la BD
+      logger.info('Waiting for MercadoPago to process first payment automatically')
 
       return {
         success: true,
