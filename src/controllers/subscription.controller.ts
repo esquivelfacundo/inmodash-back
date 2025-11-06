@@ -136,11 +136,18 @@ export const handleWebhook = async (req: Request, res: Response) => {
     
     logger.info('Processing MercadoPago webhook', webhookData)
 
-    // Procesar el webhook de forma asíncrona
-    await subscriptionService.processWebhook(webhookData)
-
-    // Responder inmediatamente a MercadoPago
+    // Responder inmediatamente a MercadoPago (antes de procesar)
     res.status(200).json({ success: true })
+
+    // Procesar el webhook de forma asíncrona (después de responder)
+    // Esto evita timeouts y 502 errors
+    setImmediate(async () => {
+      try {
+        await subscriptionService.processWebhook(webhookData)
+      } catch (error) {
+        logger.error('Error processing webhook asynchronously', error)
+      }
+    })
   } catch (error) {
     logger.error('Error in webhook handler', error)
     // Aún así responder 200 para que MercadoPago no reintente

@@ -319,11 +319,29 @@ export class SubscriptionService {
         payerEmail: payment.payer?.email,
       })
 
-      // Buscar suscripción asociada por external_reference o email del pagador
+      // Buscar suscripción asociada
       let subscription = null
       
-      // Intentar buscar por external_reference (formato: user_X)
-      if (payment.external_reference) {
+      // 1. Intentar buscar por preapproval_id en metadata
+      if (payment.metadata?.preapproval_id) {
+        subscription = await prisma.subscription.findFirst({
+          where: { 
+            mercadopagoPreapprovalId: payment.metadata.preapproval_id,
+            status: { in: ['pending', 'authorized', 'paused'] }
+          },
+          orderBy: { createdAt: 'desc' }
+        })
+        
+        if (subscription) {
+          logger.info('Subscription found by preapproval_id', {
+            subscriptionId: subscription.id,
+            preapprovalId: payment.metadata.preapproval_id
+          })
+        }
+      }
+      
+      // 2. Intentar buscar por external_reference (formato: user_X)
+      if (!subscription && payment.external_reference) {
         const match = payment.external_reference.match(/user_(\d+)/)
         if (match) {
           const userId = parseInt(match[1])
@@ -334,10 +352,17 @@ export class SubscriptionService {
             },
             orderBy: { createdAt: 'desc' }
           })
+          
+          if (subscription) {
+            logger.info('Subscription found by external_reference', {
+              subscriptionId: subscription.id,
+              userId
+            })
+          }
         }
       }
 
-      // Si no se encontró, buscar por email del pagador
+      // 3. Si no se encontró, buscar por email del pagador
       if (!subscription && payment.payer?.email) {
         const user = await prisma.user.findUnique({
           where: { email: payment.payer.email }
