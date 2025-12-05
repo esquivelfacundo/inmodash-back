@@ -5,28 +5,34 @@ async function createTestUsers() {
 
   const users = [
     {
-      email: 'test1@lidius.co',
-      name: 'Test User 1',
+      email: 'test5@lidius.co',
+      name: 'Test User 5',
       password,
-      companyName: 'Test Company 1',
+      companyName: 'Test Company 5',
     },
     {
-      email: 'test2@lidius.co',
-      name: 'Test User 2',
+      email: 'test6@lidius.co',
+      name: 'Test User 6',
       password,
-      companyName: 'Test Company 2',
+      companyName: 'Test Company 6',
     },
     {
-      email: 'test3@lidius.co',
-      name: 'Test User 3',
+      email: 'test7@lidius.co',
+      name: 'Test User 7',
       password,
-      companyName: 'Test Company 3',
+      companyName: 'Test Company 7',
     },
     {
-      email: 'test4@lidius.co',
-      name: 'Test User 4',
+      email: 'test8@lidius.co',
+      name: 'Test User 8',
       password,
-      companyName: 'Test Company 4',
+      companyName: 'Test Company 8',
+    },
+    {
+      email: 'test9@lidius.co',
+      name: 'Test User 9',
+      password,
+      companyName: 'Test Company 9',
     },
   ]
 
